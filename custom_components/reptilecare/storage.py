@@ -1,4 +1,4 @@
-"""Persistent storage for LizardCare event history."""
+"""Persistent storage for ReptileCare CareEvent history."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN
-from .models import EventType, LizardCareEvent
+from .models import CareEvent, CareEventType
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,20 +23,20 @@ STORAGE_MINOR_VERSION = 1
 type StoredData = dict[str, Any]
 
 
-class EventStore(Protocol):
-    """Persistence boundary for reptile event history."""
+class CareEventStore(Protocol):
+    """Persistence boundary for reptile CareEvent history."""
 
     async def async_load(self) -> None:
         """Load persisted events into memory."""
         ...
 
-    async def async_append_event(self, event: LizardCareEvent) -> None:
+    async def async_append_event(self, event: CareEvent) -> None:
         """Persist one event."""
         ...
 
     async def async_list_events(
         self, *, reptile_id: str | None = None
-    ) -> tuple[LizardCareEvent, ...]:
+    ) -> tuple[CareEvent, ...]:
         """Return events in chronological order."""
         ...
 
@@ -66,10 +66,10 @@ def migrate_storage(
         events = old_data.get("events", [])
         return {"events": events if isinstance(events, list) else []}
     version = f"{old_major_version}.{old_minor_version}"
-    raise ValueError(f"Unsupported LizardCare storage version {version}")
+    raise ValueError(f"Unsupported ReptileCare storage version {version}")
 
 
-class HomeAssistantEventStore:
+class HomeAssistantCareEventStore:
     """Event store backed by Home Assistant's versioned Store helper."""
 
     def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
@@ -80,7 +80,7 @@ class HomeAssistantEventStore:
             f"{DOMAIN}.{entry_id}",
             minor_version=STORAGE_MINOR_VERSION,
         )
-        self._events: tuple[LizardCareEvent, ...] = ()
+        self._events: tuple[CareEvent, ...] = ()
         self._write_lock = asyncio.Lock()
 
     async def async_load(self) -> None:
@@ -89,10 +89,10 @@ class HomeAssistantEventStore:
             stored = await self._store.async_load()
             self._events = _deserialize_events(stored)
         except (KeyError, TypeError, ValueError) as err:
-            _LOGGER.warning("Unable to load LizardCare event history: %s", err)
+            _LOGGER.warning("Unable to load ReptileCare CareEvent history: %s", err)
             self._events = ()
 
-    async def async_append_event(self, event: LizardCareEvent) -> None:
+    async def async_append_event(self, event: CareEvent) -> None:
         """Append one unique event and save the complete history."""
         async with self._write_lock:
             if any(existing.event_id == event.event_id for existing in self._events):
@@ -105,21 +105,21 @@ class HomeAssistantEventStore:
 
     async def async_list_events(
         self, *, reptile_id: str | None = None
-    ) -> tuple[LizardCareEvent, ...]:
+    ) -> tuple[CareEvent, ...]:
         """Return events in chronological order, optionally for one reptile."""
         if reptile_id is None:
             return self._events
         return tuple(event for event in self._events if event.reptile_id == reptile_id)
 
 
-def _sort_events(events: tuple[LizardCareEvent, ...]) -> tuple[LizardCareEvent, ...]:
+def _sort_events(events: tuple[CareEvent, ...]) -> tuple[CareEvent, ...]:
     """Return events in deterministic chronological order."""
     return tuple(
         sorted(events, key=lambda event: (event.timestamp, event.event_id.int))
     )
 
 
-def _serialize_event(event: LizardCareEvent) -> StoredData:
+def _serialize_event(event: CareEvent) -> StoredData:
     """Convert an event to JSON-compatible storage data."""
     return {
         "event_id": str(event.event_id),
@@ -130,20 +130,20 @@ def _serialize_event(event: LizardCareEvent) -> StoredData:
     }
 
 
-def _deserialize_events(stored: StoredData | None) -> tuple[LizardCareEvent, ...]:
+def _deserialize_events(stored: StoredData | None) -> tuple[CareEvent, ...]:
     """Deserialize and validate a stored event collection."""
     if stored is None:
         return ()
     raw_events = stored.get("events")
     if not isinstance(raw_events, list):
-        raise ValueError("event history must contain an events list")
+        raise ValueError("CareEvent history must contain an events list")
     events = tuple(_deserialize_event(item) for item in raw_events)
     if len({event.event_id for event in events}) != len(events):
-        raise ValueError("event history contains duplicate event ids")
+        raise ValueError("CareEvent history contains duplicate event ids")
     return _sort_events(events)
 
 
-def _deserialize_event(raw_event: object) -> LizardCareEvent:
+def _deserialize_event(raw_event: object) -> CareEvent:
     """Deserialize and validate one stored event."""
     if not isinstance(raw_event, Mapping):
         raise ValueError("stored event must be an object")
@@ -151,11 +151,11 @@ def _deserialize_event(raw_event: object) -> LizardCareEvent:
     metadata = raw["metadata"]
     if not isinstance(metadata, Mapping):
         raise ValueError("event metadata must be an object")
-    return LizardCareEvent(
+    return CareEvent(
         event_id=UUID(str(raw["event_id"])),
         reptile_id=str(raw["reptile_id"]),
         timestamp=datetime.fromisoformat(str(raw["timestamp"])),
-        event_type=EventType(str(raw["event_type"])),
+        event_type=CareEventType(str(raw["event_type"])),
         metadata=cast("Mapping[str, Any]", metadata),
     )
 

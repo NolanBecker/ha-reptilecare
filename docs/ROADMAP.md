@@ -1,6 +1,6 @@
 # Roadmap
 
-This roadmap describes the intended sequence for LizardCare. Each phase should
+This roadmap describes the intended sequence for ReptileCare. Each phase should
 leave the integration useful, tested, and ready for the next layer. Scope may
 be refined through design discussion, but later phases should not bypass the
 domain boundaries established earlier.
@@ -29,7 +29,7 @@ Allow keepers to create and maintain multiple reptile profiles.
 - Pixel, a Gargoyle Gecko, as the first complete development profile
 - Migration-safe persistence for reptile profiles
 
-### Phase 3 — Care Plans
+### Phase 3 — CarePlans
 
 Define what care an individual reptile should receive and under what
 conditions.
@@ -38,19 +38,19 @@ conditions.
 - Feeding and cleaning plans as the initial care domains
 - Clear recurrence and due-date semantics
 - Pausing, resuming, and revising plans without rewriting history
-- Separation between plan definitions and completed care Events
+- Separation between plan definitions and completed care CareEvents
 
-### Phase 4 — Care Tasks
+### Phase 4 — CareTasks
 
-Turn Care Plans into concrete, user-facing actions.
+Turn CarePlans into concrete, user-facing actions.
 
 - Today, upcoming, overdue, and completed task views
 - One- or two-tap completion for routine care
 - Task dismissal, deferral, and correction rules
-- Event creation from completed tasks
+- CareEvent creation from completed tasks
 - Clear handling of ad hoc care that did not originate from a plan
 
-Care Tasks are the primary interaction model. Events remain the audit log
+CareTasks are the primary interaction model. CareEvents remain the audit log
 behind task completion.
 
 ### Phase 5 — Home Assistant Services
@@ -58,8 +58,8 @@ behind task completion.
 Expose stable actions for automations, scripts, voice assistants, and external
 clients.
 
-- Create and complete supported Care Tasks
-- Record supported care Events
+- Create and complete supported CareTasks
+- Record supported care CareEvents
 - Query or target reptiles using stable identifiers
 - Validate inputs through shared domain logic
 - Preserve backward compatibility as the service surface evolves
@@ -70,17 +70,17 @@ Provide polished, reusable cards that enhance existing Home Assistant
 dashboards.
 
 - A concise “needs today” card
-- Reptile summary and Care Task cards
+- Reptile summary and CareTask cards
 - Timeline and recent-care views
 - Mobile-first layouts and accessible interactions
 - Reusable cards that can be placed on any Home Assistant dashboard
-- A dedicated LizardCare management dashboard for advanced workflows
+- A future ReptileCare Center for advanced workflows
 
 ### Phase 7 — Notifications
 
 Deliver useful prompts without creating alert fatigue.
 
-- Actionable Care Task notifications
+- Actionable CareTask notifications
 - Household-aware routing and quiet-time support
 - Escalation rules for genuinely overdue care
 - Completion directly from supported notification surfaces
@@ -112,7 +112,7 @@ Support structured observations while remaining firmly outside diagnosis.
 
 Connect visual history with growth and care records.
 
-- Photographs attached to reptiles and relevant Events
+- Photographs attached to reptiles and relevant CareEvents
 - Weight and measurement history
 - Chronological growth views
 - Storage-conscious media handling
@@ -127,12 +127,12 @@ technical evaluation, and maintainership capacity before adoption:
 - Enclosure and habitat models shared by multiple animals
 - Household roles and responsibility assignment
 - Import and export formats for long-term portability
-- Optional husbandry templates maintained separately from individual Care Plans
-- Voice-first Care Task completion
+- Optional husbandry templates maintained separately from individual CarePlans
+- Voice-first CareTask completion
 - NFC, QR, or presence-assisted workflows near enclosures
 - Privacy-preserving sharing with veterinarians or temporary caregivers
 - Support for other exotic animals where the domain model genuinely fits
 
 Exploratory features must preserve local-first operation, avoid presenting
-correlation as medical advice, and strengthen rather than bypass the Care Plan →
-Care Task → Event model.
+correlation as medical advice, and strengthen rather than bypass the CarePlan →
+CareTask → CareEvent model.

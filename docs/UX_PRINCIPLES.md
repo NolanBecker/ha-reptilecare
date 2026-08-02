@@ -1,6 +1,6 @@
 # User Experience Principles
 
-LizardCare should make responsible care feel calm, clear, and achievable. The
+ReptileCare should make responsible care feel calm, clear, and achievable. The
 interface is successful when a keeper understands what needs attention and can
 act without navigating the architecture beneath it.
 
@@ -17,8 +17,8 @@ work without creating alarm fatigue.
 
 ## Make daily care one or two taps
 
-Routine Care Tasks should usually require one tap to open and one tap to
-complete. Defaults should reflect the active Care Plan, with optional details
+Routine CareTasks should usually require one tap to open and one tap to
+complete. Defaults should reflect the active CarePlan, with optional details
 available when the user needs them. Repeatedly asking for context Home Assistant
 already knows is a design failure.
 
@@ -27,7 +27,7 @@ correction workflows should remain explicit and preserve a trustworthy history.
 
 ## Speak in care language
 
-Users work with reptiles, Care Plans, and Care Tasks. Events are the historical
+Users work with reptiles, CarePlans, and CareTasks. CareEvents are the historical
 audit log and should appear only where reviewing history makes them useful.
 Storage versions, projections, and coordinator refreshes are never user-facing
 concepts.
@@ -51,12 +51,12 @@ decide, act, or review.
 
 ## Enhance Home Assistant rather than replacing it
 
-LizardCare should fit naturally into existing Home Assistant dashboards. A
-keeper may want Pixel’s next Care Task beside enclosure climate controls or a
+ReptileCare should fit naturally into existing Home Assistant dashboards. A
+keeper may want Pixel’s next CareTask beside enclosure climate controls or a
 household overview. Reusable cards should support those compositions.
 
-Advanced management—editing reptiles, configuring Care Plans, reviewing full
-history, and exploring statistics—belongs in a dedicated LizardCare dashboard.
+Advanced management—editing reptiles, configuring CarePlans, reviewing full
+history, and exploring statistics—belongs in a future ReptileCare Center.
 That dashboard complements normal Home Assistant views; it does not become a
 parallel smart-home interface.
 
@@ -102,9 +102,9 @@ access must not prevent a keeper from seeing or recording care.
 
 ## Build trust through clarity
 
-LizardCare should distinguish recorded facts, derived conclusions, configured
+ReptileCare should distinguish recorded facts, derived conclusions, configured
 expectations, and suggestions. When an answer depends on missing history or a
-changed Care Plan, the interface should say so plainly.
+changed CarePlan, the interface should say so plainly.
 
 The integration supports care organization; it does not diagnose illness or
 replace qualified veterinary advice. Health-oriented screens must preserve that

@@ -1,4 +1,4 @@
-# Contributing to LizardCare
+# Contributing to ReptileCare
 
 Thank you for helping make reptile care easier to manage in Home Assistant.
 Contributions are welcome across code, tests, documentation, accessibility,
@@ -11,7 +11,7 @@ Before starting substantial work, read the [project vision](../VISION.md),
 ## Discuss architectural changes first
 
 Open an issue or discussion before implementing a change that affects domain
-boundaries, persistence schemas, event semantics, Care Plan or Care Task
+boundaries, persistence schemas, event semantics, CarePlan or CareTask
 lifecycle, public Home Assistant APIs, or compatibility expectations.
 
 Early discussion is not a barrier to contribution. It protects event history
@@ -53,7 +53,7 @@ existing user changes when working in a shared checkout.
 
 ## Coding standards
 
-LizardCare follows current Home Assistant custom-integration practices.
+ReptileCare follows current Home Assistant custom-integration practices.
 
 - Use full type hints for production code.
 - Prefer immutable dataclasses for domain values.
@@ -109,8 +109,8 @@ Documentation is part of the feature, not follow-up work.
   navigation changes.
 - Update the roadmap when committed scope changes.
 - Update architecture documentation when responsibilities or data flow change.
-- Describe user-facing behavior in Care Task language rather than exposing
-  Events as the primary interaction.
+- Describe user-facing behavior in CareTask language rather than exposing
+  CareEvents as the primary interaction.
 - Include migration notes for persistent or public-contract changes.
 - Avoid promises for exploratory ideas that have not been accepted into the
   roadmap.
@@ -139,7 +139,7 @@ threads should be resolved before merge.
 
 Reptile care varies by species and individual. Cite reliable sources when a
 change introduces husbandry assumptions, and design defaults so keepers can
-adapt them appropriately. LizardCare must not present software behavior as
+adapt them appropriately. ReptileCare must not present software behavior as
 diagnosis or a substitute for a qualified veterinarian.
 
 The project welcomes lived experience, but no single keeper’s routine should be

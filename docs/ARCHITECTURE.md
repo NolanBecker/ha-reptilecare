@@ -1,6 +1,6 @@
 # Architecture
 
-LizardCare is a local-first Home Assistant integration built around domain
+ReptileCare is a local-first Home Assistant integration built around domain
 models, immutable history, and derived state. The architecture separates what a
 reptile needs, what a user does, what the system records, and how Home Assistant
 presents the result.
@@ -10,11 +10,11 @@ presents the result.
 ```text
 Reptile
    ↓
-Care Plans
+CarePlans
    ↓
-Care Tasks
+CareTasks
    ↓
-Events
+CareEvents
    ↓
 Timeline
    ↓
@@ -37,9 +37,9 @@ The model holds descriptive profile information such as species, morph, hatch
 date, sex, and notes. It does not store derived care state such as “last fed” or
 “cleaning overdue.”
 
-## Care Plans
+## CarePlans
 
-A **Care Plan** expresses intended care for a reptile. It answers questions such
+A **CarePlan** expresses intended care for a reptile. It answers questions such
 as what kind of care is expected, how recurrence works, and when the plan is
 active.
 
@@ -48,30 +48,30 @@ without rewriting what happened in the past. Plans should remain independent of
 Home Assistant entity state so the same domain rules can support dashboards,
 services, notifications, and tests.
 
-## Care Tasks
+## CareTasks
 
-A **Care Task** is a concrete action presented to the user. Tasks are derived
-from Care Plans and relevant history, although future versions may also support
+A **CareTask** is a concrete action presented to the user. Tasks are derived
+from CarePlans and relevant history, although future versions may also support
 ad hoc tasks.
 
-Care Tasks are LizardCare’s primary user interaction. A keeper completes,
-defers, dismisses, or reviews a task; they should not need to create raw Events
-or understand the event engine. Completing a Care Task records the appropriate
-Event and allows the system to derive the next state.
+CareTasks are ReptileCare’s primary user interaction. A keeper completes,
+defers, dismisses, or reviews a task; they should not need to create raw CareEvents
+or understand the CareEvent engine. Completing a CareTask records the appropriate
+CareEvent and allows the system to derive the next state.
 
-## Events
+## CareEvents
 
-An **Event** is an immutable fact in the historical audit log. Every event has a
-UUID, reptile identifier, timezone-aware UTC timestamp, canonical event type,
-and flexible metadata.
+A **CareEvent** is an immutable fact in the historical audit log. Every
+CareEvent has a UUID, reptile identifier, timezone-aware UTC timestamp,
+canonical event type, and flexible metadata.
 
-Events describe what was recorded, not what should happen next. Examples
+CareEvents describe what was recorded, not what should happen next. Examples
 include a feeding, food removal, spot clean, deep clean, weight measurement,
 shed, health note, or photograph.
 
-### Why immutable events
+### Why immutable CareEvents
 
-Immutable events provide several important properties:
+Immutable CareEvents provide several important properties:
 
 - **Auditability:** the current answer can be traced to recorded facts.
 - **Consistency:** there is one source of truth rather than duplicated “last”
@@ -79,19 +79,19 @@ Immutable events provide several important properties:
 - **Reinterpretation:** improved projection logic can operate on existing
   history without rewriting stored state.
 - **Extensibility:** new features can consume earlier events without changing
-  the event engine’s core contract.
+  the CareEvent engine’s core contract.
 - **Recovery:** state can be rebuilt after restart from persisted history.
 
 Corrections should eventually be modeled explicitly rather than silently
 mutating historical records. The correction policy is intentionally deferred
 until editing workflows are designed.
 
-## Event Store
+## CareEventStore
 
-The `EventStore` protocol is the persistence boundary. Runtime code depends on
+The `CareEventStore` protocol is the persistence boundary. Runtime code depends on
 the protocol rather than Home Assistant’s storage implementation.
 
-The current `HomeAssistantEventStore` uses Home Assistant’s versioned `Store`
+The current `HomeAssistantCareEventStore` uses Home Assistant’s versioned `Store`
 helper. It loads automatically during config-entry setup and saves after each
 successful append. It provides deterministic ordering, duplicate UUID
 protection, serialized writes, migration hooks, and graceful recovery from
@@ -102,21 +102,21 @@ domain objects before history reaches the Timeline.
 
 ## Timeline
 
-The **Timeline** is the read-only query layer over ordered Events. It centralizes
+The **Timeline** is the read-only query layer over ordered CareEvents. It centralizes
 chronological ordering and common filters so future features do not repeatedly
 implement subtly different history logic.
 
-The Timeline can return all Events, find the latest Event, find the latest Event
-of a type, filter by reptile, select a time interval, and count matching Events.
-It does not decide when a reptile should be fed or whether a Care Task is due.
-Those projections belong to future Care Plan and Care Task layers.
+The Timeline can return all CareEvents, find the latest CareEvent, find the latest CareEvent
+of a type, filter by reptile, select a time interval, and count matching CareEvents.
+It does not decide when a reptile should be fed or whether a CareTask is due.
+Those projections belong to future CarePlan and CareTask layers.
 
 Keeping Timeline separate from storage also makes query behavior deterministic
 and easy to test without filesystem or Home Assistant dependencies.
 
 ## Coordinator
 
-The `LizardCareCoordinator` owns the Event Store and current Timeline. On
+The `ReptileCareCoordinator` owns the CareEventStore and current Timeline. On
 startup it builds a lightweight snapshot from persisted history. When future
 feature modules publish a new snapshot, the coordinator updates the Timeline
 before notifying listeners.
@@ -131,7 +131,7 @@ Entities are presentation and automation adapters at the outer edge of the
 system. They should expose stable domain results to Home Assistant while keeping
 business rules in the domain layers.
 
-An entity may display today’s next Care Task or derived recent-care information,
+An entity may display today’s next CareTask or derived recent-care information,
 but it should not calculate those answers independently or persist its own copy
 of them. This keeps dashboards, services, and notifications consistent.
 
@@ -144,8 +144,8 @@ Directly storing values such as `last_feeding`, `last_cleaning`, or
 can leave those fields stale, and new logic cannot reliably reconstruct how the
 answer was reached.
 
-LizardCare instead derives state from ordered Events, interpreted in the
-context of a Reptile and its Care Plans. Derived state may be cached for
+ReptileCare instead derives state from ordered CareEvents, interpreted in the
+context of a Reptile and its CarePlans. Derived state may be cached for
 performance in the future, but any cache must be disposable and reproducible
 from authoritative history.
 
@@ -153,9 +153,9 @@ from authoritative history.
 
 - Domain logic must not depend on dashboard layout.
 - Entities and services must not write storage records directly.
-- Care Plans define intent; they do not represent completion.
-- Care Tasks represent actionable work; they are not the audit log.
-- Events record facts; they do not prescribe future care.
+- CarePlans define intent; they do not represent completion.
+- CareTasks represent actionable work; they are not the audit log.
+- CareEvents record facts; they do not prescribe future care.
 - Timeline queries history; it does not implement husbandry policy.
 - Automation may capture context quietly, but it must preserve clear ownership
   of recorded data.

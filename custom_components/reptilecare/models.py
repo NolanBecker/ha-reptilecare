@@ -1,4 +1,4 @@
-"""Shared domain models for LizardCare."""
+"""Shared domain models for ReptileCare."""
 
 from __future__ import annotations
 
@@ -12,12 +12,12 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 if TYPE_CHECKING:
-    from .coordinator import LizardCareCoordinator
-    from .storage import EventStore
+    from .coordinator import ReptileCareCoordinator
+    from .storage import CareEventStore
 
 
-class EventType(StrEnum):
-    """Canonical event types supported by LizardCare."""
+class CareEventType(StrEnum):
+    """Canonical event types supported by ReptileCare."""
 
     FEEDING = "feeding"
     FOOD_REMOVED = "food_removed"
@@ -55,11 +55,11 @@ def _immutable_metadata(metadata: Mapping[str, Any]) -> Mapping[str, Any]:
 
 
 @dataclass(frozen=True, slots=True)
-class LizardCareEvent:
+class CareEvent:
     """An immutable event belonging to one reptile."""
 
     reptile_id: str
-    event_type: EventType
+    event_type: CareEventType
     timestamp: datetime = field(default_factory=_utc_now)
     metadata: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}))
     event_id: UUID = field(default_factory=uuid4)
@@ -78,7 +78,7 @@ class LizardCareEvent:
 
 @dataclass(frozen=True, slots=True)
 class Reptile:
-    """An individual reptile tracked by LizardCare."""
+    """An individual reptile tracked by ReptileCare."""
 
     reptile_id: str
     display_name: str
@@ -90,15 +90,15 @@ class Reptile:
 
 
 @dataclass(frozen=True, slots=True)
-class LizardCareSnapshot:
+class ReptileCareSnapshot:
     """Lightweight coordinator state derived from the event stream."""
 
-    events: tuple[LizardCareEvent, ...] = ()
+    events: tuple[CareEvent, ...] = ()
 
 
 @dataclass(slots=True)
-class LizardCareRuntimeData:
+class ReptileCareRuntimeData:
     """Runtime dependencies owned by a config entry."""
 
-    coordinator: LizardCareCoordinator
-    event_store: EventStore
+    coordinator: ReptileCareCoordinator
+    event_store: CareEventStore

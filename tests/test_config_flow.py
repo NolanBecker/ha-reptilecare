@@ -1,4 +1,4 @@
-"""Tests for the LizardCare config flow."""
+"""Tests for the ReptileCare config flow."""
 
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntryState
@@ -6,7 +6,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.lizardcare.const import DOMAIN, INTEGRATION_NAME
+from custom_components.reptilecare.const import DOMAIN, INTEGRATION_NAME
 
 
 async def test_user_flow_creates_entry(hass: HomeAssistant) -> None:
@@ -29,7 +29,7 @@ async def test_user_flow_creates_entry(hass: HomeAssistant) -> None:
 
 
 async def test_user_flow_aborts_when_configured(hass: HomeAssistant) -> None:
-    """Test that only one LizardCare entry can be configured."""
+    """Test that only one ReptileCare entry can be configured."""
     entry = MockConfigEntry(
         domain=DOMAIN,
         title=INTEGRATION_NAME,

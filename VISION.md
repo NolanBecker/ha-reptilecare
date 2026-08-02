@@ -1,8 +1,8 @@
-# LizardCare Vision
+# ReptileCare Vision
 
 ## Mission
 
-LizardCare exists to make excellent reptile care easier to sustain. It gives
+ReptileCare exists to make excellent reptile care easier to sustain. It gives
 keepers a calm, dependable view of what each animal needs, records what has
 happened, and uses thoughtful automation to reduce the mental load of recurring
 care.
@@ -25,7 +25,7 @@ where care takes place. The result is unnecessary cognitive overhead: deciding
 what is due, remembering what was completed, and reconstructing a history when
 something changes.
 
-LizardCare is designed around a more useful question:
+ReptileCare is designed around a more useful question:
 
 > What does my reptile need today?
 
@@ -38,13 +38,13 @@ Home Assistant already understands the context around animal care. It can know
 the enclosure temperature and humidity, whether someone is home, when lights
 changed, and which notification channels are appropriate. It offers durable
 local operation, flexible dashboards, mature automation, and a large ecosystem
-of devices without requiring LizardCare to recreate them.
+of devices without requiring ReptileCare to recreate them.
 
-LizardCare should use those strengths directly. Its cards should fit into
+ReptileCare should use those strengths directly. Its cards should fit into
 existing Home Assistant dashboards. Its future entities and services should
-compose with standard automations. Advanced management can live in a dedicated
-LizardCare dashboard without forcing users to abandon the views they already
-use for their homes.
+compose with standard automations. Advanced management can live in the future
+ReptileCare Center without forcing users to abandon the views they already use
+for their homes.
 
 The integration remains useful without cloud services. Care history belongs to
 the keeper, stays under their control, and continues to work when the internet
@@ -58,27 +58,27 @@ The product is organized around animals and their care, not around data entry.
 Language, defaults, and workflows should reflect how keepers think. Every
 feature must make care clearer, easier, or more reliable.
 
-### Care Tasks are the primary interaction
+### CareTasks are the primary interaction
 
-Users interact with **Care Tasks**: concrete actions such as feeding Pixel,
+Users interact with **CareTasks**: concrete actions such as feeding Pixel,
 removing uneaten food, or spot-cleaning an enclosure. A routine task should
-usually take one or two taps to complete. Care Plans explain why and when those
+usually take one or two taps to complete. CarePlans explain why and when those
 tasks appear.
 
-Events are an implementation detail and historical audit log. They make the
+CareEvents are an implementation detail and historical audit log. They make the
 system trustworthy, but users should not have to understand event sourcing to
 care for an animal.
 
 ### Automation should be quiet and useful
 
 Automation should reduce mental load, not create more alerts to manage. When
-Home Assistant already has useful context, LizardCare should capture or apply
+Home Assistant already has useful context, ReptileCare should capture or apply
 it without asking the user to repeat information. Notifications should be
 timely, actionable, and respectful of attention.
 
 ### State is derived from history
 
-LizardCare records immutable facts and derives current answers from them. This
+ReptileCare records immutable facts and derives current answers from them. This
 makes care history auditable, allows improved logic to reinterpret existing
 records, and avoids contradictory fields such as a stored “last feeding” that
 does not match the event history.
@@ -92,23 +92,23 @@ language matter more than rushing visible features.
 
 ### Open development
 
-LizardCare is open source so keepers and contributors can inspect its behavior,
+ReptileCare is open source so keepers and contributors can inspect its behavior,
 shape its priorities, and adapt it to different species and husbandry
 practices. The project should welcome evidence, experience, and respectful
 disagreement without presenting software defaults as veterinary advice.
 
 ## Long-term vision
 
-LizardCare should become the care layer for reptiles in Home Assistant. A
-keeper should be able to define a reptile and its Care Plans, see today’s Care
+ReptileCare should become the care layer for reptiles in Home Assistant. A
+keeper should be able to define a reptile and its CarePlans, see today’s Care
 Tasks alongside the rest of the home, complete routine care quickly, and review
 a coherent timeline of what happened.
 
 Over time, the same foundation can support health observations, growth,
 photographs, environmental context, and careful statistics. Reusable dashboard
-cards should work wherever a keeper needs them. A dedicated management
-dashboard should provide deeper planning and history without replacing normal
-Home Assistant dashboards.
+cards should work wherever a keeper needs them. The future ReptileCare Center
+should provide deeper planning and history without replacing normal Home
+Assistant dashboards. Reusable cards are preferred over a monolithic dashboard.
 
 Pixel, a Gargoyle Gecko, is the first development reptile. Pixel provides a
 real, concrete use case, but the architecture and language must remain suitable
@@ -116,7 +116,7 @@ for many reptiles, species, households, and care practices.
 
 ## Non-goals
 
-LizardCare is not intended to:
+ReptileCare is not intended to:
 
 - Replace veterinary care or provide diagnosis.
 - Prescribe universal husbandry rules for every species or animal.
@@ -127,6 +127,6 @@ LizardCare is not intended to:
 - Turn routine care into a competitive score or punish users for imperfect
   streaks.
 
-The measure of success is not how much data LizardCare collects. It is whether
+The measure of success is not how much data ReptileCare collects. It is whether
 keepers can understand and complete good care with less effort and greater
 confidence.

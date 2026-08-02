@@ -1,4 +1,4 @@
-"""Config flow for LizardCare."""
+"""Config flow for ReptileCare."""
 
 from __future__ import annotations
 
@@ -10,8 +10,8 @@ import voluptuous as vol
 from .const import DOMAIN, INTEGRATION_NAME
 
 
-class LizardCareConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for LizardCare."""
+class ReptileCareConfigFlow(ConfigFlow, domain=DOMAIN):
+    """Handle a config flow for ReptileCare."""
 
     VERSION = 1
     MINOR_VERSION = 1
@@ -19,7 +19,7 @@ class LizardCareConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Create the single LizardCare config entry."""
+        """Create the single ReptileCare config entry."""
         await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured()
 
