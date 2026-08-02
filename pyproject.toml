@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ha-lizardcare"
+version = "0.1.0"
+description = "Event-driven reptile care tracking for Home Assistant"
+readme = "README.md"
+requires-python = ">=3.14.2"
+license = "MIT"
+authors = [{ name = "Nolan Becker" }]
+dependencies = []
+
+[project.optional-dependencies]
+test = [
+  "homeassistant>=2026.7.0",
+  "pytest>=8.3.5",
+  "pytest-cov>=6.0.0",
+  "pytest-homeassistant-custom-component>=0.13.300",
+  "pytest-socket>=0.7.0",
+  "ruff>=0.11.0",
+]
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers -ra"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["custom_components/lizardcare"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+
+[tool.ruff]
+target-version = "py314"
+line-length = 88
+exclude = [".venv", "work"]
+
+[tool.ruff.lint]
+select = [
+  "ASYNC",
+  "B",
+  "C4",
+  "DTZ",
+  "E",
+  "F",
+  "I",
+  "ICN",
+  "ISC",
+  "LOG",
+  "PIE",
+  "PT",
+  "PYI",
+  "RSE",
+  "SIM",
+  "T20",
+  "UP",
+]
+ignore = [
+  "COM812",
+  "D203",
+  "D213",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ARG001", "S101"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["custom_components.lizardcare"]
+force-sort-within-sections = true
+
+[tool.setuptools]
+packages = []
