@@ -2,7 +2,9 @@
 
 LizardCare is a Home Assistant custom integration for tracking reptile care. It
 is being built around an event-driven, multi-reptile architecture so care
-history can grow without coupling independent features together.
+history can grow without coupling independent features together. Its long-term
+experience is centered on Care Tasks: clear actions that tell keepers what each
+reptile needs today.
 
 > [!NOTE]
 > This first release is an architectural foundation. It creates a single
@@ -85,7 +87,22 @@ canonical `EventType` enum provides a stable vocabulary for future feature
 modules. No feeding schedules, care projections, or Home Assistant entities are
 implemented at this milestone.
 
-## Roadmap
+The product architecture will build from reptiles to Care Plans, then Care
+Tasks. Completing a Care Task records an immutable Event; Timeline and
+coordinator layers derive the information exposed to Home Assistant. Events are
+the audit log, not the primary user interaction.
+
+## Project documentation
+
+- [Vision](VISION.md) — mission, philosophy, long-term direction, and non-goals
+- [Roadmap](docs/ROADMAP.md) — committed development phases and future ideas
+- [Architecture](docs/ARCHITECTURE.md) — domain boundaries and data flow
+- [UX principles](docs/UX_PRINCIPLES.md) — standards for a calm, care-first
+  experience
+- [Contributing](docs/CONTRIBUTING.md) — branch workflow, quality requirements,
+  and pull request expectations
+
+## Roadmap summary
 
 - Establish the integration lifecycle and event/storage contracts
 - Add configuration for multi-reptile profiles
@@ -96,7 +113,8 @@ implemented at this milestone.
 
 Pixel, a Gargoyle Gecko, is the first development reptile and will guide early
 use cases. LizardCare is intentionally designed to support many individual
-reptiles and reptile species in future releases.
+reptiles and reptile species in future releases. See the full
+[project roadmap](docs/ROADMAP.md) for the planned sequence.
 
 ## License
 
