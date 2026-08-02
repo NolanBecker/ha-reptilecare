@@ -6,7 +6,9 @@ design, and domain research.
 
 Before starting substantial work, read the [project vision](../VISION.md),
 [architecture](ARCHITECTURE.md), [roadmap](ROADMAP.md), and
-[UX principles](UX_PRINCIPLES.md).
+[UX principles](UX_PRINCIPLES.md). The [development workflow](../DEVELOPMENT.md)
+explains how roadmap milestones, epics, issues, and the GitHub Project fit
+together.
 
 ## Discuss architectural changes first
 
@@ -40,13 +42,18 @@ docs/event-migration-policy
 
 ## Feature branch workflow
 
-1. Update local `main` from the upstream repository.
-2. Create a focused branch using the naming convention above.
-3. Make small, reviewable commits with imperative commit messages.
-4. Add or update tests and documentation with the implementation.
-5. Run the complete local quality checks.
-6. Rebase or update the branch if `main` changed materially.
-7. Open a pull request and respond to review without rewriting unrelated code.
+Follow the issue and project lifecycle in [DEVELOPMENT.md](../DEVELOPMENT.md):
+
+1. Select an accepted, unblocked issue from the ReptileCare Roadmap project.
+2. Move the issue to In Progress and confirm its acceptance criteria.
+3. Update local `main` from the upstream repository.
+4. Create a focused branch using the naming convention above.
+5. Make small, reviewable commits with imperative commit messages.
+6. Add or update tests and documentation with the implementation.
+7. Run the complete local quality checks.
+8. Rebase or update the branch if `main` changed materially.
+9. Open a pull request, link the issue, and respond to review without rewriting
+   unrelated code.
 
 Avoid mixing cleanup or unrelated refactoring into a feature branch. Preserve
 existing user changes when working in a shared checkout.
