@@ -1,6 +1,11 @@
 """Tests for shared LizardCare models."""
 
-from custom_components.lizardcare.models import EventType
+from datetime import UTC, datetime
+from uuid import UUID
+
+import pytest
+
+from custom_components.lizardcare.models import EventType, LizardCareEvent, Reptile
 
 
 def test_event_types_are_stable() -> None:
@@ -15,3 +20,45 @@ def test_event_types_are_stable() -> None:
         "spot_clean",
         "weight",
     }
+
+
+def test_events_receive_unique_ids_and_freeze_metadata() -> None:
+    """Test event identity, UTC normalization, and metadata immutability."""
+    metadata = {"foods": ["cricket"]}
+    first = LizardCareEvent(
+        reptile_id="pixel",
+        event_type=EventType.FEEDING,
+        timestamp=datetime(2026, 1, 1, tzinfo=UTC),
+        metadata=metadata,
+    )
+    second = LizardCareEvent(reptile_id="pixel", event_type=EventType.FEEDING)
+    metadata["foods"].append("roach")
+
+    assert isinstance(first.event_id, UUID)
+    assert first.event_id != second.event_id
+    assert first.timestamp.tzinfo is UTC
+    assert first.metadata["foods"] == ("cricket",)
+    with pytest.raises(TypeError):
+        first.metadata["foods"] = ("roach",)
+
+
+def test_event_rejects_naive_timestamp() -> None:
+    """Test that event timestamps must identify a timezone."""
+    with pytest.raises(ValueError, match="timezone-aware"):
+        LizardCareEvent(
+            reptile_id="pixel",
+            event_type=EventType.WEIGHT,
+            timestamp=datetime(2026, 1, 1),  # noqa: DTZ001
+        )
+
+
+def test_reptile_model() -> None:
+    """Test the lightweight reptile profile model."""
+    pixel = Reptile(
+        reptile_id="pixel",
+        display_name="Pixel",
+        species="Gargoyle Gecko",
+    )
+
+    assert pixel.display_name == "Pixel"
+    assert pixel.morph is None

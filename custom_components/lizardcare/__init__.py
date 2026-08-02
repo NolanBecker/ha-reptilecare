@@ -9,7 +9,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .coordinator import LizardCareCoordinator
-from .storage import NullEventStore
+from .storage import HomeAssistantEventStore
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -18,7 +18,8 @@ PLATFORMS: tuple[Platform, ...] = ()
 
 async def async_setup_entry(hass: HomeAssistant, entry: LizardCareConfigEntry) -> bool:
     """Set up LizardCare from a config entry."""
-    store = NullEventStore()
+    store = HomeAssistantEventStore(hass, entry.entry_id)
+    await store.async_load()
     coordinator = LizardCareCoordinator(
         hass=hass,
         config_entry=entry,

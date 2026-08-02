@@ -16,8 +16,9 @@ The current foundation provides:
 - UI configuration through Home Assistant's config flow
 - Safe setup, reload, and unload behavior
 - An event-driven `DataUpdateCoordinator` with no periodic polling
-- Typed event and runtime models
-- A pluggable event-store boundary for future persistence
+- Immutable event and reptile domain models
+- Versioned persistent event history backed by Home Assistant storage
+- Reusable timeline queries for chronological history and filtering
 - Downloadable diagnostics containing non-sensitive scaffold metadata
 
 Planned feature modules include feeding, cleaning, weight, shedding, health,
@@ -63,16 +64,31 @@ On Windows, activate the environment with `.venv\Scripts\activate`.
 
 ## Architecture
 
-Each future feature is expected to own its event vocabulary and projection
-logic while sharing immutable `LizardCareEvent` records, the `EventStore`
-contract, the canonical `EventType` vocabulary, and the coordinator's immutable
-snapshot. This keeps feature modules independent and allows the initial no-op
-store to be replaced by persistent storage without changing entity code.
+LizardCare stores facts as immutable `LizardCareEvent` records rather than
+persisting derived care state. The event store loads and saves versioned history
+through Home Assistant's storage helper. `Timeline` orders that history and
+provides reusable queries, while the coordinator publishes a lightweight
+snapshot and exposes the timeline to future entities:
+
+```text
+Home Assistant Store
+        ↓
+     Timeline
+        ↓
+    Coordinator
+        ↓
+Future Home Assistant entities
+```
+
+The `EventStore` protocol keeps persistence behind a narrow boundary, and the
+canonical `EventType` enum provides a stable vocabulary for future feature
+modules. No feeding schedules, care projections, or Home Assistant entities are
+implemented at this milestone.
 
 ## Roadmap
 
 - Establish the integration lifecycle and event/storage contracts
-- Add multi-reptile profiles and persistent event history
+- Add configuration for multi-reptile profiles
 - Introduce feeding, cleaning, weight, and shedding modules
 - Add health, notes, photos, and environmental tracking
 - Build schedules, reminders, and dashboard-friendly entities after the event

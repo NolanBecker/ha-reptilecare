@@ -1,12 +1,12 @@
 {
+  "domain": "lizardcare",
+  "name": "LizardCare",
   "codeowners": ["@NolanBecker"],
   "config_flow": true,
   "documentation": "https://github.com/NolanBecker/ha-lizardcare#readme",
-  "domain": "lizardcare",
   "integration_type": "service",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/NolanBecker/ha-lizardcare/issues",
-  "name": "LizardCare",
   "requirements": [],
   "single_config_entry": true,
   "version": "0.1.0"

@@ -11,6 +11,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from .const import INTEGRATION_NAME
 from .models import LizardCareSnapshot
 from .storage import EventStore
+from .timeline import Timeline
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,13 +39,16 @@ class LizardCareCoordinator(DataUpdateCoordinator[LizardCareSnapshot]):
             update_interval=None,
         )
         self.event_store = event_store
+        self.timeline = Timeline()
 
     async def _async_update_data(self) -> LizardCareSnapshot:
         """Build the initial snapshot from the configured event store."""
         events = await self.event_store.async_list_events()
+        self.timeline = Timeline(events)
         return LizardCareSnapshot(events=events)
 
     @callback
     def async_handle_event(self, snapshot: LizardCareSnapshot) -> None:
         """Publish state produced by an event-driven feature module."""
+        self.timeline = Timeline(snapshot.events)
         self.async_set_updated_data(snapshot)
