@@ -65,9 +65,9 @@ On Windows, activate the environment with `.venv\Scripts\activate`.
 
 Each future feature is expected to own its event vocabulary and projection
 logic while sharing immutable `LizardCareEvent` records, the `EventStore`
-contract, and the coordinator's immutable snapshot. This keeps feature modules
-independent and allows the initial no-op store to be replaced by persistent
-storage without changing entity code.
+contract, the canonical `EventType` vocabulary, and the coordinator's immutable
+snapshot. This keeps feature modules independent and allows the initial no-op
+store to be replaced by persistent storage without changing entity code.
 
 ## Roadmap
 
