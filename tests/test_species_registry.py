@@ -8,6 +8,7 @@ import pytest
 from custom_components.reptilecare.domain.species import (
     DuplicateSpeciesProfileError,
     InvalidSpeciesProfileError,
+    ProfileOrigin,
     SpeciesProfile,
     SpeciesProfileNotFoundError,
     SpeciesProfileRegistry,
@@ -28,6 +29,7 @@ def test_builtin_registry_loads_gargoyle_gecko() -> None:
     assert profile.default_environmental_targets.targets == ()
     assert profile.default_task_template_ids == ()
     assert profile.references == ()
+    assert profile.origin is ProfileOrigin.BUILTIN
 
 
 def test_registry_lookup_and_ordering() -> None:

@@ -7,9 +7,10 @@ import json
 import pytest
 
 from custom_components.reptilecare.domain.species import (
-    EnvironmentalTarget,
-    EnvironmentalTargets,
+    EnvironmentalRecommendation,
+    EnvironmentalRecommendationSet,
     InvalidSpeciesProfileError,
+    ProfileOrigin,
     ProfileReference,
     SpeciesProfile,
     species_profile_from_dict,
@@ -24,9 +25,9 @@ def _profile() -> SpeciesProfile:
         scientific_name="Testus gecko",
         category="gecko",
         description="A profile used by domain tests.",
-        default_environmental_targets=EnvironmentalTargets(
+        default_environmental_targets=EnvironmentalRecommendationSet(
             (
-                EnvironmentalTarget(
+                EnvironmentalRecommendation(
                     target_id="temperature",
                     display_name="Temperature",
                     minimum=20,
@@ -69,17 +70,19 @@ def test_profile_is_immutable_and_normalized() -> None:
         profile.display_name = "Changed"  # type: ignore[misc]
 
 
-def test_environmental_targets_are_sorted_and_unique() -> None:
-    """Target collections provide immutable deterministic ordering."""
-    first = EnvironmentalTarget("humidity", "Humidity", 50, 60, "%")
-    second = EnvironmentalTarget("air_temperature", "Air temperature", 20, 25, "°C")
-    targets = EnvironmentalTargets((first, second))
-    assert [item.target_id for item in targets.targets] == [
+def test_environmental_recommendations_are_sorted_and_unique() -> None:
+    """Recommendation sets provide immutable deterministic ordering."""
+    first = EnvironmentalRecommendation("humidity", "Humidity", 50, 60, "%")
+    second = EnvironmentalRecommendation(
+        "air_temperature", "Air temperature", 20, 25, "°C"
+    )
+    recommendations = EnvironmentalRecommendationSet((first, second))
+    assert [item.target_id for item in recommendations.targets] == [
         "air_temperature",
         "humidity",
     ]
     with pytest.raises(InvalidSpeciesProfileError, match="unique"):
-        EnvironmentalTargets((first, first))
+        EnvironmentalRecommendationSet((first, first))
 
 
 @pytest.mark.parametrize(
@@ -92,7 +95,7 @@ def test_environmental_targets_are_sorted_and_unique() -> None:
         ({"warning_maximum": 22}, "warning_maximum"),
     ],
 )
-def test_environmental_target_rejects_invalid_ranges(
+def test_environmental_recommendation_rejects_invalid_ranges(
     kwargs: dict[str, object], message: str
 ) -> None:
     """Environmental ranges reject malformed and contradictory values."""
@@ -105,7 +108,7 @@ def test_environmental_target_rejects_invalid_ranges(
     }
     values.update(kwargs)
     with pytest.raises(InvalidSpeciesProfileError, match=message):
-        EnvironmentalTarget(**values)  # type: ignore[arg-type]
+        EnvironmentalRecommendation(**values)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(
@@ -141,6 +144,7 @@ def test_serialization_omits_absent_optional_fields() -> None:
         ({"profile_id": "INVALID"}, "namespaced"),
         ({"default_task_template_ids": ["invalid"]}, "namespaced"),
         ({"default_environmental_targets": {}}, "array"),
+        ({"origin": "remote"}, "origin"),
         ({"references": {}}, "array"),
     ],
 )
@@ -177,3 +181,24 @@ def test_profile_rejects_duplicate_template_ids() -> None:
             "Description",
             default_task_template_ids=("test:task", "test:task"),
         )
+
+
+def test_profile_origin_is_typed_and_serializable() -> None:
+    """Profiles default to the built-in origin and serialize its stable value."""
+    profile = _profile()
+    assert profile.origin is ProfileOrigin.BUILTIN
+    assert species_profile_to_dict(profile)["origin"] == "builtin"
+
+    user_profile = SpeciesProfile(
+        "test:user",
+        "User profile",
+        "Testus",
+        "gecko",
+        "Description",
+        origin=ProfileOrigin.USER,
+    )
+    assert user_profile.origin is ProfileOrigin.USER
+
+    legacy_data = species_profile_to_dict(profile)
+    del legacy_data["origin"]
+    assert species_profile_from_dict(legacy_data).origin is ProfileOrigin.BUILTIN

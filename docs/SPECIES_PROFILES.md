@@ -7,14 +7,15 @@ individual reptile records and not a substitute for keeper judgment.
 ## Scope
 
 A `SpeciesProfile` identifies a species and may provide reviewed environmental
-targets, future CareTask template identifiers, and supporting references. A
-`Reptile` remains the durable record for an individual animal. Future
-CarePlans may adopt profile defaults and then preserve reptile-specific choices
-independently.
+recommendations, future CareTask template identifiers, and supporting
+references. A `Reptile` remains the durable record for an individual animal.
+Future CarePlans may adopt profile defaults and then preserve reptile-specific
+choices independently.
 
 Profiles do not contain sensor entity IDs, device IDs, enclosure assignments,
-or live measurements. Home Assistant adapters will map domain target IDs to
-entities in a later milestone.
+or live measurements. Environmental recommendations are husbandry reference
+data, intentionally separate from future Home Assistant sensor entities and
+their live environmental values.
 
 ## Identifiers and versions
 
@@ -29,11 +30,25 @@ config-entry setup. Unknown fields, malformed ranges, unsupported schema
 versions, duplicate IDs, and invalid references stop loading with a clear
 error; profile data is never silently ignored.
 
-## Environmental targets
+`ProfileOrigin` records where a profile definition came from using a stable,
+serializable value. The type reserves `builtin`, `community`, and `user` for
+future extensibility. Only `builtin` profiles are currently loaded or
+supported; the other values do not enable remote downloads or user profile
+management.
 
-`EnvironmentalTarget` is intentionally generic. Its stable `target_id`, range,
-warning bounds, display name, and explicit unit can describe temperature,
-humidity, or future measurements without embedding Home Assistant concepts.
+## Environmental recommendations
+
+`EnvironmentalRecommendation` describes a reviewed husbandry range, not a
+measurement. Its stable `target_id`, range, warning bounds, display name, and
+explicit unit can describe temperature, humidity, or future environmental
+guidance without embedding Home Assistant concepts. An
+`EnvironmentalRecommendationSet` keeps those recommendations immutable and
+deterministically ordered.
+
+Schema-version-1 documents retain the serialized
+`default_environmental_targets` and `target_id` keys for compatibility. These
+are storage identifiers for recommendation definitions, not live sensor
+targets or readings; the Python types carry the clearer domain terminology.
 Warning bounds, when present, must enclose the recommended range.
 
 Environmental recommendations are husbandry guidance and require reviewed,
@@ -56,4 +71,7 @@ profiles unnoticed. Future schema versions must introduce an intentional
 migration or compatibility policy before being accepted.
 
 Model collections are copied into immutable tuples. Registry output is sorted
-by profile ID, making lookups and tests deterministic.
+by profile ID, making lookups and tests deterministic. Models, validation,
+serialization, and the small registry remain together in `domain/species.py`:
+they form one cohesive bounded unit, and splitting them now would add import
+surfaces without improving ownership or readability.

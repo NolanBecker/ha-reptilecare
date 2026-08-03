@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date
+from enum import StrEnum
 from importlib.resources import files
 from importlib.resources.abc import Traversable
 import json
@@ -54,9 +55,17 @@ def _number(value: object, name: str) -> int | float:
     return value
 
 
+class ProfileOrigin(StrEnum):
+    """Origin of a species profile definition."""
+
+    BUILTIN = "builtin"
+    COMMUNITY = "community"
+    USER = "user"
+
+
 @dataclass(frozen=True, slots=True)
-class EnvironmentalTarget:
-    """A generic recommended range for one environmental measurement."""
+class EnvironmentalRecommendation:
+    """A husbandry recommendation for one environmental measurement."""
 
     target_id: str
     display_name: str
@@ -104,22 +113,28 @@ class EnvironmentalTarget:
 
 
 @dataclass(frozen=True, slots=True)
-class EnvironmentalTargets:
-    """An immutable, deterministically ordered collection of targets."""
+class EnvironmentalRecommendationSet:
+    """An immutable, ordered collection of environmental recommendations."""
 
-    targets: tuple[EnvironmentalTarget, ...] = ()
+    targets: tuple[EnvironmentalRecommendation, ...] = ()
 
     def __post_init__(self) -> None:
-        targets = tuple(self.targets)
-        if not all(isinstance(item, EnvironmentalTarget) for item in targets):
+        recommendations = tuple(self.targets)
+        if not all(
+            isinstance(item, EnvironmentalRecommendation) for item in recommendations
+        ):
             raise InvalidSpeciesProfileError(
-                "environmental targets contain invalid values"
+                "environmental recommendations contain invalid values"
             )
-        identifiers = [item.target_id for item in targets]
+        identifiers = [item.target_id for item in recommendations]
         if len(identifiers) != len(set(identifiers)):
-            raise InvalidSpeciesProfileError("environmental target IDs must be unique")
+            raise InvalidSpeciesProfileError(
+                "environmental recommendation IDs must be unique"
+            )
         object.__setattr__(
-            self, "targets", tuple(sorted(targets, key=lambda item: item.target_id))
+            self,
+            "targets",
+            tuple(sorted(recommendations, key=lambda item: item.target_id)),
         )
 
 
@@ -156,20 +171,21 @@ class ProfileReference:
 
 @dataclass(frozen=True, slots=True)
 class SpeciesProfile:
-    """Versioned, reusable defaults for a reptile species."""
+    """Versioned, reusable husbandry recommendations for a reptile species."""
 
     profile_id: str
     display_name: str
     scientific_name: str
     category: str
     description: str
-    default_environmental_targets: EnvironmentalTargets = field(
-        default_factory=EnvironmentalTargets
+    default_environmental_targets: EnvironmentalRecommendationSet = field(
+        default_factory=EnvironmentalRecommendationSet
     )
     default_task_template_ids: tuple[str, ...] = ()
     references: tuple[ProfileReference, ...] = ()
     schema_version: int = SPECIES_PROFILE_SCHEMA_VERSION
     profile_version: int = 1
+    origin: ProfileOrigin = ProfileOrigin.BUILTIN
 
     def __post_init__(self) -> None:
         profile_id = _text(self.profile_id, "profile_id")
@@ -183,10 +199,16 @@ class SpeciesProfile:
         ):
             if isinstance(value, bool) or not isinstance(value, int) or value < 1:
                 raise InvalidSpeciesProfileError(f"{name} must be a positive integer")
-        if not isinstance(self.default_environmental_targets, EnvironmentalTargets):
+        if not isinstance(
+            self.default_environmental_targets, EnvironmentalRecommendationSet
+        ):
             raise InvalidSpeciesProfileError(
                 "default_environmental_targets has an invalid type"
             )
+        try:
+            origin = ProfileOrigin(self.origin)
+        except (TypeError, ValueError) as err:
+            raise InvalidSpeciesProfileError("origin is invalid") from err
         template_ids = tuple(
             _text(item, "task template ID") for item in self.default_task_template_ids
         )
@@ -204,9 +226,10 @@ class SpeciesProfile:
             object.__setattr__(self, name, _text(getattr(self, name), name))
         object.__setattr__(self, "default_task_template_ids", template_ids)
         object.__setattr__(self, "references", references)
+        object.__setattr__(self, "origin", origin)
 
 
-_PROFILE_KEYS = frozenset(
+_PROFILE_REQUIRED_KEYS = frozenset(
     {
         "profile_id",
         "display_name",
@@ -220,10 +243,11 @@ _PROFILE_KEYS = frozenset(
         "profile_version",
     }
 )
-_TARGET_REQUIRED = frozenset(
+_PROFILE_OPTIONAL_KEYS = frozenset({"origin"})
+_RECOMMENDATION_REQUIRED = frozenset(
     {"target_id", "display_name", "minimum", "maximum", "unit"}
 )
-_TARGET_OPTIONAL = frozenset({"warning_minimum", "warning_maximum", "notes"})
+_RECOMMENDATION_OPTIONAL = frozenset({"warning_minimum", "warning_maximum", "notes"})
 _REFERENCE_REQUIRED = frozenset({"title", "publisher", "url"})
 _REFERENCE_OPTIONAL = frozenset({"publication_date", "notes"})
 
@@ -258,19 +282,19 @@ def _keys(
 
 def species_profile_to_dict(profile: SpeciesProfile) -> dict[str, Any]:
     """Serialize a species profile to JSON-compatible values."""
-    targets = []
-    for target in profile.default_environmental_targets.targets:
+    recommendations = []
+    for recommendation in profile.default_environmental_targets.targets:
         item: dict[str, Any] = {
-            "target_id": target.target_id,
-            "display_name": target.display_name,
-            "minimum": target.minimum,
-            "maximum": target.maximum,
-            "unit": target.unit,
+            "target_id": recommendation.target_id,
+            "display_name": recommendation.display_name,
+            "minimum": recommendation.minimum,
+            "maximum": recommendation.maximum,
+            "unit": recommendation.unit,
         }
         for name in ("warning_minimum", "warning_maximum", "notes"):
-            if (value := getattr(target, name)) is not None:
+            if (value := getattr(recommendation, name)) is not None:
                 item[name] = value
-        targets.append(item)
+        recommendations.append(item)
     references = []
     for reference in profile.references:
         item = {
@@ -289,30 +313,36 @@ def species_profile_to_dict(profile: SpeciesProfile) -> dict[str, Any]:
         "scientific_name": profile.scientific_name,
         "category": profile.category,
         "description": profile.description,
-        "default_environmental_targets": targets,
+        "default_environmental_targets": recommendations,
         "default_task_template_ids": list(profile.default_task_template_ids),
         "references": references,
         "schema_version": profile.schema_version,
         "profile_version": profile.profile_version,
+        "origin": profile.origin.value,
     }
 
 
 def species_profile_from_dict(value: Mapping[str, Any]) -> SpeciesProfile:
     """Deserialize and strictly validate a species profile mapping."""
     data = _mapping(value, "species profile")
-    _keys(data, _PROFILE_KEYS, frozenset(), "species profile")
+    _keys(data, _PROFILE_REQUIRED_KEYS, _PROFILE_OPTIONAL_KEYS, "species profile")
     if data["schema_version"] != SPECIES_PROFILE_SCHEMA_VERSION:
         raise InvalidSpeciesProfileError(
             f"unsupported schema version: {data['schema_version']!r}"
         )
-    targets = []
+    recommendations = []
     for index, raw in enumerate(
         _array(data["default_environmental_targets"], "default_environmental_targets")
     ):
-        item = _mapping(raw, f"environmental target {index}")
-        _keys(item, _TARGET_REQUIRED, _TARGET_OPTIONAL, f"environmental target {index}")
-        targets.append(
-            EnvironmentalTarget(
+        item = _mapping(raw, f"environmental recommendation {index}")
+        _keys(
+            item,
+            _RECOMMENDATION_REQUIRED,
+            _RECOMMENDATION_OPTIONAL,
+            f"environmental recommendation {index}",
+        )
+        recommendations.append(
+            EnvironmentalRecommendation(
                 target_id=item["target_id"],
                 display_name=item["display_name"],
                 minimum=item["minimum"],
@@ -356,13 +386,16 @@ def species_profile_from_dict(value: Mapping[str, Any]) -> SpeciesProfile:
         scientific_name=data["scientific_name"],
         category=data["category"],
         description=data["description"],
-        default_environmental_targets=EnvironmentalTargets(tuple(targets)),
+        default_environmental_targets=EnvironmentalRecommendationSet(
+            tuple(recommendations)
+        ),
         default_task_template_ids=tuple(
             _array(data["default_task_template_ids"], "default_task_template_ids")
         ),
         references=tuple(references),
         schema_version=data["schema_version"],
         profile_version=data["profile_version"],
+        origin=data.get("origin", ProfileOrigin.BUILTIN),
     )
 
 

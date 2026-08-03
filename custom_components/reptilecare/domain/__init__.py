@@ -2,9 +2,10 @@
 
 from .species import (
     DuplicateSpeciesProfileError,
-    EnvironmentalTarget,
-    EnvironmentalTargets,
+    EnvironmentalRecommendation,
+    EnvironmentalRecommendationSet,
     InvalidSpeciesProfileError,
+    ProfileOrigin,
     ProfileReference,
     SpeciesProfile,
     SpeciesProfileError,
@@ -16,9 +17,10 @@ from .species import (
 
 __all__ = [
     "DuplicateSpeciesProfileError",
-    "EnvironmentalTarget",
-    "EnvironmentalTargets",
+    "EnvironmentalRecommendation",
+    "EnvironmentalRecommendationSet",
     "InvalidSpeciesProfileError",
+    "ProfileOrigin",
     "ProfileReference",
     "SpeciesProfile",
     "SpeciesProfileError",

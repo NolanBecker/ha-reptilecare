@@ -76,7 +76,7 @@ Recommended fields:
 | `scientific_name` | Scientific species name |
 | `category` | Broad grouping for discovery, not behavior dispatch |
 | `description` | Concise profile guidance |
-| `default_environmental_targets` | Structured recommended ranges and units |
+| `default_environmental_targets` | Serialized husbandry recommendations and units; never live sensor values |
 | `default_task_template_ids` | References to recommended task definitions |
 | `references` | Source title, publisher, URL, and optional publication date |
 | `schema_version` | Serialization schema version |
