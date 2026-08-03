@@ -19,6 +19,7 @@ The current foundation provides:
 - Safe setup, reload, and unload behavior
 - An event-driven `DataUpdateCoordinator` with no periodic polling
 - Immutable event and reptile domain models
+- A versioned species-profile domain model and built-in profile registry
 - Versioned persistent CareEvent history backed by Home Assistant storage
 - Reusable timeline queries for chronological history and filtering
 - Downloadable diagnostics containing non-sensitive scaffold metadata
@@ -99,6 +100,8 @@ historical audit log, not the primary user interaction.
 - [Architecture](docs/ARCHITECTURE.md) — domain boundaries and data flow
 - [Core domain design proposal](docs/CORE_DOMAIN_DESIGN.md) — implementation-ready
   boundaries for profiles, plans, tasks, outcomes, events, and workflows
+- [Species profiles](docs/SPECIES_PROFILES.md) — profile schema, validation,
+  sourcing policy, and compatibility rules
 - [UX principles](docs/UX_PRINCIPLES.md) — standards for a calm, care-first
   experience
 - [Development workflow](DEVELOPMENT.md) — GitHub Issues, milestones, labels,

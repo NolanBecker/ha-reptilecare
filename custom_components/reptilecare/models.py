@@ -13,6 +13,7 @@ from uuid import UUID, uuid4
 
 if TYPE_CHECKING:
     from .coordinator import ReptileCareCoordinator
+    from .domain.species import SpeciesProfileRegistry
     from .storage import CareEventStore
 
 
@@ -102,3 +103,4 @@ class ReptileCareRuntimeData:
 
     coordinator: ReptileCareCoordinator
     event_store: CareEventStore
+    species_profiles: SpeciesProfileRegistry
