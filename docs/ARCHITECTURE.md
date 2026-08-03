@@ -43,6 +43,19 @@ The model holds descriptive profile information such as species, morph, hatch
 date, sex, and notes. It does not store derived care state such as “last fed” or
 “cleaning overdue.”
 
+## Species profiles
+
+A **SpeciesProfile** is versioned reference data containing reusable species
+identity and reviewed defaults. It is separate from a Reptile: selecting a
+profile must not replace the individual animal's stable identity or silently
+overwrite reptile-specific CarePlan choices.
+
+Built-in JSON profiles are loaded through a pure-domain registry during
+config-entry setup. The registry is exposed in config-entry runtime data for
+future CarePlan and user-interface layers. It does not participate in
+coordinator polling, event history, or Home Assistant entity mapping. See
+[Species profiles](SPECIES_PROFILES.md) for its validation and sourcing policy.
+
 ## CarePlans
 
 A **CarePlan** expresses intended care for a reptile. It answers questions such

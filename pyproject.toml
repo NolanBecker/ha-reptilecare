@@ -75,3 +75,8 @@ force-sort-within-sections = true
 
 [tool.setuptools]
 packages = []
+
+[tool.setuptools.data-files]
+"custom_components/reptilecare/profiles" = [
+  "custom_components/reptilecare/profiles/*.json",
+]

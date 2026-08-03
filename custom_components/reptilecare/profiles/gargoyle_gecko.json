@@ -1,0 +1,12 @@
+{
+  "profile_id": "builtin:gargoyle_gecko",
+  "display_name": "Gargoyle Gecko",
+  "scientific_name": "Rhacodactylus auriculatus",
+  "category": "gecko",
+  "description": "A built-in species identity for Gargoyle Geckos. Care defaults will be added only after their supporting sources are reviewed.",
+  "default_environmental_targets": [],
+  "default_task_template_ids": [],
+  "references": [],
+  "schema_version": 1,
+  "profile_version": 1
+}

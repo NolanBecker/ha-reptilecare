@@ -7,8 +7,10 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryError
 
 from .coordinator import ReptileCareCoordinator
+from .domain.species import SpeciesProfileError, SpeciesProfileRegistry
 from .storage import HomeAssistantCareEventStore
 
 _LOGGER = logging.getLogger(__name__)
@@ -18,6 +20,13 @@ PLATFORMS: tuple[Platform, ...] = ()
 
 async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) -> bool:
     """Set up ReptileCare from a config entry."""
+    try:
+        species_profiles = await hass.async_add_executor_job(
+            SpeciesProfileRegistry.load_builtin_profiles
+        )
+    except SpeciesProfileError as err:
+        raise ConfigEntryError("Unable to load built-in species profiles") from err
+
     store = HomeAssistantCareEventStore(hass, entry.entry_id)
     await store.async_load()
     coordinator = ReptileCareCoordinator(
@@ -30,6 +39,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
     entry.runtime_data = ReptileCareRuntimeData(
         coordinator=coordinator,
         event_store=store,
+        species_profiles=species_profiles,
     )
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
 
