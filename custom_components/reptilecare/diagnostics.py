@@ -22,6 +22,7 @@ async def async_get_config_entry_diagnostics(
         },
         "runtime": {
             "event_count": len(entry.runtime_data.coordinator.data.events),
-            "storage": type(entry.runtime_data.event_store).__name__,
+            "reptile_count": len(entry.runtime_data.reptile_repository.all()),
+            "event_storage": type(entry.runtime_data.event_store).__name__,
         },
     }

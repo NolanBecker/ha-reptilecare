@@ -23,6 +23,7 @@ async def test_diagnostics(hass: HomeAssistant) -> None:
         "config_entry": {"version": 1, "minor_version": 1},
         "runtime": {
             "event_count": 0,
-            "storage": "HomeAssistantCareEventStore",
+            "reptile_count": 0,
+            "event_storage": "HomeAssistantCareEventStore",
         },
     }

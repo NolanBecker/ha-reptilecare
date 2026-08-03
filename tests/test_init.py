@@ -7,6 +7,7 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.reptilecare.const import DOMAIN, INTEGRATION_NAME
+from custom_components.reptilecare.domain.reptile import Reptile
 from custom_components.reptilecare.models import (
     CareEvent,
     CareEventType,
@@ -27,7 +28,9 @@ async def test_setup_and_unload_entry(hass: HomeAssistant) -> None:
     assert isinstance(entry.runtime_data, ReptileCareRuntimeData)
     assert entry.runtime_data.coordinator.data.events == ()
     assert entry.runtime_data.coordinator.timeline.all_events() == ()
+    assert entry.runtime_data.timeline.all_events() == ()
     assert entry.runtime_data.species_profiles.contains("builtin:gargoyle_gecko")
+    assert entry.runtime_data.reptile_repository.all() == ()
 
     event = CareEvent(reptile_id="pixel", event_type=CareEventType.FEEDING)
     snapshot = ReptileCareSnapshot(events=(event,))
@@ -45,9 +48,14 @@ async def test_reload_rebuilds_species_registry(hass: HomeAssistant) -> None:
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     original_registry = entry.runtime_data.species_profiles
+    original_repository = entry.runtime_data.reptile_repository
+    pixel = Reptile("pixel", "Pixel", "builtin:gargoyle_gecko")
+    await original_repository.async_add(pixel)
     await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done()
     assert entry.runtime_data.species_profiles is not original_registry
+    assert entry.runtime_data.reptile_repository is not original_repository
+    assert entry.runtime_data.reptile_repository.get("pixel") == pixel
     assert entry.runtime_data.species_profiles.contains("builtin:gargoyle_gecko")
 
 

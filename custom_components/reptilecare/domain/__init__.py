@@ -1,5 +1,20 @@
 """Pure domain models for ReptileCare."""
 
+from .reptile import (
+    DuplicateReptileError,
+    InvalidReptileError,
+    MemoryReptilePersistence,
+    Reptile,
+    ReptileError,
+    ReptileNotFoundError,
+    ReptileOverrides,
+    ReptilePersistence,
+    ReptileRepository,
+    ReptileSex,
+    UnknownSpeciesProfileError,
+    reptile_from_dict,
+    reptile_to_dict,
+)
 from .species import (
     DuplicateSpeciesProfileError,
     EnvironmentalTarget,
@@ -15,15 +30,28 @@ from .species import (
 )
 
 __all__ = [
+    "DuplicateReptileError",
     "DuplicateSpeciesProfileError",
     "EnvironmentalTarget",
     "EnvironmentalTargets",
     "InvalidSpeciesProfileError",
+    "InvalidReptileError",
+    "MemoryReptilePersistence",
     "ProfileReference",
+    "Reptile",
+    "ReptileError",
+    "ReptileNotFoundError",
+    "ReptileOverrides",
+    "ReptilePersistence",
+    "ReptileRepository",
+    "ReptileSex",
     "SpeciesProfile",
     "SpeciesProfileError",
     "SpeciesProfileNotFoundError",
     "SpeciesProfileRegistry",
+    "UnknownSpeciesProfileError",
+    "reptile_from_dict",
+    "reptile_to_dict",
     "species_profile_from_dict",
     "species_profile_to_dict",
 ]

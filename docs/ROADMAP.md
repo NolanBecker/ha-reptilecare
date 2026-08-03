@@ -34,9 +34,10 @@ Allow keepers to create and maintain multiple reptile profiles.
 - Pixel, a Gargoyle Gecko, as the first complete development profile
 - Migration-safe persistence for reptile profiles
 
-The first foundation for this phase is the versioned `SpeciesProfile` registry.
-It provides species reference data independently of the future persistence and
-management workflows for individual Reptiles.
+The phase now has two domain foundations: the versioned `SpeciesProfile`
+registry for shared husbandry reference data, and the persistent
+`ReptileRepository` for immutable keeper-owned animal records. User-facing
+creation and editing workflows remain future work.
 
 ### Phase 3 — Care Plans
 
