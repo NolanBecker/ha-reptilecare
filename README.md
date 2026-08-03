@@ -97,6 +97,8 @@ historical audit log, not the primary user interaction.
 - [Vision](VISION.md) — mission, philosophy, long-term direction, and non-goals
 - [Roadmap](docs/ROADMAP.md) — committed development phases and future ideas
 - [Architecture](docs/ARCHITECTURE.md) — domain boundaries and data flow
+- [Core domain design proposal](docs/CORE_DOMAIN_DESIGN.md) — implementation-ready
+  boundaries for profiles, plans, tasks, outcomes, events, and workflows
 - [UX principles](docs/UX_PRINCIPLES.md) — standards for a calm, care-first
   experience
 - [Development workflow](DEVELOPMENT.md) — GitHub Issues, milestones, labels,
