@@ -33,6 +33,7 @@ async def test_setup_and_unload_entry(hass: HomeAssistant) -> None:
     assert entry.runtime_data.timeline.all_events() == ()
     assert entry.runtime_data.species_profiles.contains("builtin:gargoyle_gecko")
     assert entry.runtime_data.task_templates.contains("builtin:feed_fruit")
+    assert entry.runtime_data.workflow_graphs.contains("builtin:feeding_cycle")
     assert entry.runtime_data.reptile_repository.all() == ()
 
     event = CareEvent(reptile_id=PIXEL_ID, event_type=CareEventType.FEEDING)
@@ -53,6 +54,7 @@ async def test_reload_rebuilds_species_registry(hass: HomeAssistant) -> None:
     original_registry = entry.runtime_data.species_profiles
     original_repository = entry.runtime_data.reptile_repository
     original_templates = entry.runtime_data.task_templates
+    original_workflows = entry.runtime_data.workflow_graphs
     pixel = Reptile(
         reptile_id=PIXEL_ID,
         display_name="Pixel",
@@ -65,9 +67,11 @@ async def test_reload_rebuilds_species_registry(hass: HomeAssistant) -> None:
     assert entry.runtime_data.species_profiles is not original_registry
     assert entry.runtime_data.reptile_repository is not original_repository
     assert entry.runtime_data.task_templates is not original_templates
+    assert entry.runtime_data.workflow_graphs is not original_workflows
     assert entry.runtime_data.reptile_repository.get(PIXEL_ID) == pixel
     assert entry.runtime_data.species_profiles.contains("builtin:gargoyle_gecko")
     assert entry.runtime_data.task_templates.contains("builtin:feed_fruit")
+    assert entry.runtime_data.workflow_graphs.contains("builtin:feeding_cycle")
 
 
 async def test_invalid_builtin_profile_fails_setup(
@@ -108,4 +112,22 @@ async def test_invalid_builtin_task_template_fails_setup(
     )
     entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
     with pytest.raises(ConfigEntryError, match="built-in task templates"):
+        await async_setup_entry(hass, entry)
+
+
+async def test_invalid_builtin_workflow_graph_fails_setup(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Invalid bundled workflow graph data fails setup clearly."""
+    from custom_components.reptilecare import WorkflowRegistry, async_setup_entry
+    from custom_components.reptilecare.domain.workflow import InvalidWorkflowError
+
+    def _raise_invalid_workflow() -> None:
+        raise InvalidWorkflowError("invalid packaged workflow graph")
+
+    monkeypatch.setattr(
+        WorkflowRegistry, "load_builtin_workflows", _raise_invalid_workflow
+    )
+    entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
+    with pytest.raises(ConfigEntryError, match="built-in workflow graphs"):
         await async_setup_entry(hass, entry)

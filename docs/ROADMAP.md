@@ -52,9 +52,10 @@ conditions.
 
 Phase 3 now begins with three upstream foundations already in place:
 `SpeciesProfileRegistry` for shared husbandry guidance, `TaskTemplateRegistry`
-for reusable care-action definitions, and `ReptileRepository` for keeper-owned
-animal identity. Future CarePlans should reference these foundations rather than
-redefining action vocabulary or runtime reptile data.
+for reusable care-action definitions, `WorkflowRegistry` for reusable behavior
+definitions, and `ReptileRepository` for keeper-owned animal identity. Future
+CarePlans should reference these foundations rather than redefining action
+vocabulary, behavior vocabulary, or runtime reptile data.
 
 ### Phase 4 — Care Tasks
 
@@ -68,6 +69,10 @@ Turn CarePlans into concrete, user-facing actions.
 
 CareTasks are the primary interaction model. CareEvents remain the audit log
 behind task completion.
+
+This phase should consume `WorkflowGraph` definitions through a future
+`TaskWorkflowService` rather than embedding workflow execution into templates or
+entities directly.
 
 ### Phase 5 — Home Assistant Services
 

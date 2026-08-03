@@ -23,7 +23,7 @@ layers:
 - They declare which outcomes are valid for that kind of work.
 - They describe optional structured context a future completion flow may ask
   for.
-- They reserve a typed place for future completion behavior and workflow
+- They reserve a typed place for future completion behavior and workflow-graph
   attachment without executing anything today.
 
 Templates intentionally do not answer when something should happen or which
@@ -82,8 +82,9 @@ specific actionable occurrence of that action.
 
 ## Relationship to TaskWorkflowService
 
-`CompletionBehavior` and `workflow_definition` exist only as descriptive
-placeholders in this branch.
+`CompletionBehavior` exists only as a descriptive placeholder in this branch.
+`workflow_graph_id` allows a template to reference a reusable `WorkflowGraph`
+without embedding the graph inline.
 
 They intentionally do not:
 
@@ -110,7 +111,8 @@ The current `TaskTemplate` model includes:
 - `default_priority`: typed default importance
 - `estimated_duration`: optional expected minutes
 - `completion_behavior`: descriptive future side effects
-- `workflow_definition`: placeholder object
+- `completion_behavior.workflow_graph_id`: optional reusable workflow graph
+  reference
 - `metadata`: extensible structured data
 - `schema_version` and `template_version`: explicit version fields
 

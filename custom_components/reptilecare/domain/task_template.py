@@ -191,6 +191,7 @@ class CompletionBehavior:
     create_care_event: bool = True
     supports_follow_up_task: bool = False
     supports_workflow: bool = False
+    workflow_graph_id: str | None = None
     metadata: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}))
 
     def __post_init__(self) -> None:
@@ -206,6 +207,17 @@ class CompletionBehavior:
             raise InvalidTaskTemplateError(
                 "completion behavior metadata must be an object"
             )
+        workflow_graph_id = _optional_text(self.workflow_graph_id, "workflow_graph_id")
+        if workflow_graph_id is not None:
+            if _NAMESPACED_ID.fullmatch(workflow_graph_id) is None:
+                raise InvalidTaskTemplateError(
+                    "workflow_graph_id must be a lowercase namespaced identifier"
+                )
+            if not self.supports_workflow:
+                raise InvalidTaskTemplateError(
+                    "workflow_graph_id requires supports_workflow to be true"
+                )
+        object.__setattr__(self, "workflow_graph_id", workflow_graph_id)
         object.__setattr__(self, "metadata", metadata)
 
 
@@ -223,9 +235,6 @@ class TaskTemplate:
     default_priority: TaskPriority = TaskPriority.NORMAL
     estimated_duration: int | None = None
     completion_behavior: CompletionBehavior = field(default_factory=CompletionBehavior)
-    workflow_definition: Mapping[str, Any] = field(
-        default_factory=lambda: MappingProxyType({})
-    )
     metadata: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}))
     schema_version: int = TASK_TEMPLATE_SCHEMA_VERSION
     template_version: int = 1
@@ -260,11 +269,6 @@ class TaskTemplate:
             )
         if not isinstance(self.completion_behavior, CompletionBehavior):
             raise InvalidTaskTemplateError("completion_behavior has an invalid type")
-        workflow_definition = _json_value(
-            self.workflow_definition, "workflow_definition"
-        )
-        if not isinstance(workflow_definition, Mapping):
-            raise InvalidTaskTemplateError("workflow_definition must be an object")
         metadata = _json_value(self.metadata, "metadata")
         if not isinstance(metadata, Mapping):
             raise InvalidTaskTemplateError("metadata must be an object")
@@ -295,7 +299,6 @@ class TaskTemplate:
         object.__setattr__(self, "expected_outcomes", expected_outcomes)
         object.__setattr__(self, "context_fields", context_fields)
         object.__setattr__(self, "default_priority", default_priority)
-        object.__setattr__(self, "workflow_definition", workflow_definition)
         object.__setattr__(self, "metadata", metadata)
 
 
@@ -309,7 +312,6 @@ _TEMPLATE_REQUIRED_KEYS = frozenset(
         "context_fields",
         "default_priority",
         "completion_behavior",
-        "workflow_definition",
         "metadata",
         "schema_version",
         "template_version",
@@ -370,9 +372,9 @@ def task_template_to_dict(template: TaskTemplate) -> dict[str, Any]:
                 template.completion_behavior.supports_follow_up_task
             ),
             "supports_workflow": template.completion_behavior.supports_workflow,
+            "workflow_graph_id": template.completion_behavior.workflow_graph_id,
             "metadata": _to_json_compatible(template.completion_behavior.metadata),
         },
-        "workflow_definition": _to_json_compatible(template.workflow_definition),
         "metadata": _to_json_compatible(template.metadata),
         "schema_version": template.schema_version,
         "template_version": template.template_version,
@@ -439,7 +441,7 @@ def task_template_from_dict(value: Mapping[str, Any]) -> TaskTemplate:
     _keys(
         completion_behavior,
         _COMPLETION_BEHAVIOR_REQUIRED_KEYS,
-        frozenset(),
+        frozenset({"workflow_graph_id"}),
         "completion_behavior",
     )
 
@@ -457,9 +459,9 @@ def task_template_from_dict(value: Mapping[str, Any]) -> TaskTemplate:
             create_care_event=completion_behavior["create_care_event"],
             supports_follow_up_task=completion_behavior["supports_follow_up_task"],
             supports_workflow=completion_behavior["supports_workflow"],
+            workflow_graph_id=completion_behavior.get("workflow_graph_id"),
             metadata=completion_behavior["metadata"],
         ),
-        workflow_definition=data["workflow_definition"],
         metadata=data["metadata"],
         schema_version=data["schema_version"],
         template_version=data["template_version"],

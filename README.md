@@ -24,6 +24,7 @@ The current foundation provides:
 - Immutable event and reptile domain models
 - A versioned species-profile domain model and built-in profile registry
 - A versioned task-template domain model and built-in task template registry
+- A versioned workflow-graph domain model and built-in workflow graph registry
 - A validated multi-reptile repository with immutable keeper-owned records
 - Separate, versioned persistence for reptiles and CareEvent history
 - Versioned persistent CareEvent history backed by Home Assistant storage
@@ -103,6 +104,10 @@ Reusable `TaskTemplate` definitions now sit between shared reference data and
 future CarePlans. They describe what kind of action exists without attaching
 that action to a reptile, schedule, or workflow runtime.
 
+Reusable `WorkflowGraph` definitions now describe what follow-up behavior may
+exist after a task outcome without executing that behavior yet. They are loaded
+beside task templates and prepare the future `TaskWorkflowService`.
+
 ## Project documentation
 
 - [Vision](VISION.md) — mission, philosophy, long-term direction, and non-goals
@@ -114,6 +119,8 @@ that action to a reptile, schedule, or workflow runtime.
   sourcing policy, and compatibility rules
 - [Task templates](docs/TASK_TEMPLATES.md) — reusable care-action definitions,
   typed outcomes, context fields, and registry behavior
+- [Workflow graphs](docs/WORKFLOW_GRAPHS.md) — reusable post-outcome behavior
+  definitions, graph validation, and registry behavior
 - [Reptiles](docs/REPTILES.md) — individual-animal ownership, overrides,
   repository behavior, persistence, and archival policy
 - [UX principles](docs/UX_PRINCIPLES.md) — standards for a calm, care-first

@@ -10,11 +10,10 @@ presents the result.
 ```text
 SpeciesProfile --> Reptile ----+
                                |
-TaskTemplate ----------------> CarePlans
-                               ↓
-                            CareTasks
-                               ↓
-                            CareEvents
+TaskTemplate ----------------> CarePlans --> CareTasks --> CareEvents
+        |                           ^
+        v                           |
+ WorkflowGraphs --> future TaskWorkflowService
                                ↓
                              Timeline
                                ↓
@@ -96,6 +95,22 @@ config-entry setup and exposed in config-entry runtime data beside the species
 registry and reptile repository. They are intentionally outside coordinator
 polling, event history, and entity projection concerns. See
 [Task templates](TASK_TEMPLATES.md) for the complete boundary.
+
+## Workflow graphs
+
+A **WorkflowGraph** is an immutable reusable behavior definition. It answers
+what should happen after a task reaches a given outcome, such as recording a
+CareEvent, waiting for a delay, or describing a follow-up task creation step.
+
+Workflow Graphs do not execute behavior. They contain node, transition,
+trigger, delay, and descriptive action definitions only. A future
+`TaskWorkflowService` will interpret them later.
+
+Built-in JSON workflow graphs are loaded through `WorkflowRegistry` during
+config-entry setup and exposed in runtime data beside the species and template
+registries. This keeps workflow language available to future service, plan,
+task, dashboard, and automation layers without coupling the graph model to Home
+Assistant entities or coordinator logic.
 
 ## CarePlans
 
@@ -186,9 +201,10 @@ Assistant entities should consume coordinator data and Timeline queries rather
 than access persistence directly.
 
 Config-entry runtime data exposes the SpeciesProfile registry, TaskTemplate
-registry, Reptile repository, and the coordinator's current Timeline. The
-repository is not owned by the coordinator: individual-animal persistence and
-event-derived projections have separate responsibilities and lifecycles.
+registry, WorkflowGraph registry, Reptile repository, and the coordinator's
+current Timeline. The repository is not owned by the coordinator:
+individual-animal persistence and event-derived projections have separate
+responsibilities and lifecycles.
 
 ## Home Assistant entities
 
@@ -219,6 +235,7 @@ from authoritative history.
 - Domain logic must not depend on dashboard layout.
 - Entities and services must not write storage records directly.
 - TaskTemplates define reusable action vocabulary; they must not hold runtime state.
+- WorkflowGraphs define reusable behavior vocabulary; they must not execute runtime state changes.
 - CarePlans define intent; they do not represent completion.
 - CareTasks represent actionable work; they are not the audit log.
 - CareEvents record facts; they do not prescribe future care.

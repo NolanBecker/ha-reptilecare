@@ -56,8 +56,8 @@ def _template() -> TaskTemplate:
             create_care_event=True,
             supports_follow_up_task=True,
             supports_workflow=True,
+            workflow_graph_id="builtin:feeding_cycle",
         ),
-        workflow_definition={"future": {"enabled": True}},
         metadata={"group": "feeding"},
     )
 
@@ -86,7 +86,6 @@ def test_task_template_is_immutable_and_normalized() -> None:
         ({"category": "not_a_category"}, "category"),
         ({"default_priority": "not_a_priority"}, "default_priority"),
         ({"estimated_duration": 0}, "estimated_duration"),
-        ({"workflow_definition": []}, "workflow_definition"),
         ({"metadata": []}, "metadata"),
     ],
 )
@@ -103,6 +102,21 @@ def test_task_template_rejects_invalid_values(
     values.update(mutation)
     with pytest.raises(InvalidTaskTemplateError, match=message):
         TaskTemplate(**values)  # type: ignore[arg-type]
+
+
+def test_completion_behavior_validates_workflow_graph_id() -> None:
+    """Workflow graph references stay explicit and namespaced."""
+    with pytest.raises(InvalidTaskTemplateError, match="workflow_graph_id"):
+        CompletionBehavior(
+            supports_workflow=True,
+            workflow_graph_id="Not Valid",
+        )
+
+    with pytest.raises(InvalidTaskTemplateError, match="supports_workflow"):
+        CompletionBehavior(
+            supports_workflow=False,
+            workflow_graph_id="builtin:feeding_cycle",
+        )
 
 
 def test_outcomes_and_context_fields_reject_duplicates_and_invalid_ids() -> None:
@@ -147,6 +161,9 @@ def test_serialization_round_trip_is_json_compatible() -> None:
     """Templates round-trip through explicit JSON-compatible serialization."""
     template = _template()
     serialized = task_template_to_dict(template)
+    assert serialized["completion_behavior"]["workflow_graph_id"] == (
+        "builtin:feeding_cycle"
+    )
     assert task_template_from_dict(json.loads(json.dumps(serialized))) == template
 
 

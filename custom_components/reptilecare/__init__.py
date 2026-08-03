@@ -13,6 +13,7 @@ from .coordinator import ReptileCareCoordinator
 from .domain.reptile import ReptileError, ReptileRepository
 from .domain.species import SpeciesProfileError, SpeciesProfileRegistry
 from .domain.task_template import TaskTemplateError, TaskTemplateRegistry
+from .domain.workflow import WorkflowError, WorkflowRegistry
 from .reptile_storage import HomeAssistantReptilePersistence
 from .storage import HomeAssistantCareEventStore
 
@@ -35,6 +36,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
         )
     except TaskTemplateError as err:
         raise ConfigEntryError("Unable to load built-in task templates") from err
+    try:
+        workflow_graphs = await hass.async_add_executor_job(
+            WorkflowRegistry.load_builtin_workflows
+        )
+    except WorkflowError as err:
+        raise ConfigEntryError("Unable to load built-in workflow graphs") from err
 
     reptile_repository = ReptileRepository(
         species_profiles,
@@ -60,6 +67,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
         species_profiles=species_profiles,
         reptile_repository=reptile_repository,
         task_templates=task_templates,
+        workflow_graphs=workflow_graphs,
     )
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
 

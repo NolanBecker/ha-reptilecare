@@ -1,0 +1,125 @@
+{
+  "workflow_id": "builtin:feeding_cycle",
+  "display_name": "Feeding Cycle",
+  "description": "Describe the follow-up work that can happen after a successful fruit feeding.",
+  "version": 1,
+  "start_node": "start",
+  "nodes": [
+    {
+      "node_id": "start",
+      "node_type": "start",
+      "metadata": {
+        "source_template_id": "builtin:feed_fruit"
+      }
+    },
+    {
+      "node_id": "record_feeding_event",
+      "node_type": "action",
+      "action": {
+        "action_type": "create_care_event",
+        "display_name": "Record Feeding Event",
+        "metadata": {
+          "event_type": "feeding"
+        }
+      },
+      "metadata": {}
+    },
+    {
+      "node_id": "wait_before_cleanup",
+      "node_type": "action",
+      "action": {
+        "action_type": "delay",
+        "display_name": "Wait Before Cleanup",
+        "metadata": {
+          "reason": "allow food access window"
+        }
+      },
+      "metadata": {}
+    },
+    {
+      "node_id": "create_remove_food_task",
+      "node_type": "action",
+      "action": {
+        "action_type": "create_task",
+        "display_name": "Create Remove Food Task",
+        "metadata": {
+          "task_kind": "remove_food"
+        }
+      },
+      "metadata": {}
+    },
+    {
+      "node_id": "create_next_feeding_task",
+      "node_type": "action",
+      "action": {
+        "action_type": "create_task",
+        "display_name": "Create Next Feeding Task",
+        "metadata": {
+          "template_id": "builtin:feed_fruit"
+        }
+      },
+      "metadata": {}
+    },
+    {
+      "node_id": "complete_workflow",
+      "node_type": "end",
+      "metadata": {}
+    }
+  ],
+  "transitions": [
+    {
+      "from_node": "start",
+      "to_node": "record_feeding_event",
+      "trigger": {
+        "trigger_type": "outcome_selected",
+        "outcome_id": "ate_normally",
+        "metadata": {}
+      },
+      "metadata": {}
+    },
+    {
+      "from_node": "record_feeding_event",
+      "to_node": "wait_before_cleanup",
+      "trigger": {
+        "trigger_type": "task_completed",
+        "metadata": {}
+      },
+      "metadata": {}
+    },
+    {
+      "from_node": "wait_before_cleanup",
+      "to_node": "create_remove_food_task",
+      "trigger": {
+        "trigger_type": "timeout_elapsed",
+        "metadata": {}
+      },
+      "delay": {
+        "amount": 24,
+        "unit": "hours"
+      },
+      "metadata": {}
+    },
+    {
+      "from_node": "create_remove_food_task",
+      "to_node": "create_next_feeding_task",
+      "trigger": {
+        "trigger_type": "task_completed",
+        "metadata": {}
+      },
+      "metadata": {}
+    },
+    {
+      "from_node": "create_next_feeding_task",
+      "to_node": "complete_workflow",
+      "trigger": {
+        "trigger_type": "task_completed",
+        "metadata": {}
+      },
+      "metadata": {}
+    }
+  ],
+  "metadata": {
+    "audience": "core"
+  },
+  "schema_version": 1
+}

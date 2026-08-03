@@ -43,6 +43,7 @@ def test_builtin_registry_loads_feed_fruit() -> None:
         "quantity",
         "notes",
     ]
+    assert template.completion_behavior.workflow_graph_id == "builtin:feeding_cycle"
 
 
 def test_registry_lookup_and_ordering() -> None:

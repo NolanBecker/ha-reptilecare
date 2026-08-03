@@ -61,9 +61,9 @@
     "create_care_event": true,
     "supports_follow_up_task": true,
     "supports_workflow": true,
+    "workflow_graph_id": "builtin:feeding_cycle",
     "metadata": {}
   },
-  "workflow_definition": {},
   "metadata": {
     "audience": "core"
   },
