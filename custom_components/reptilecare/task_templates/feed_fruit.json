@@ -1,0 +1,72 @@
+{
+  "template_id": "builtin:feed_fruit",
+  "display_name": "Feed Fruit Mix",
+  "description": "Offer prepared fruit mix as a reusable feeding action.",
+  "category": "feeding",
+  "icon": "mdi:food-apple",
+  "expected_outcomes": [
+    {
+      "outcome_id": "ate_normally",
+      "display_name": "Ate Normally",
+      "description": "The reptile ate the offered fruit mix without concern."
+    },
+    {
+      "outcome_id": "ate_partially",
+      "display_name": "Ate Partially",
+      "description": "Some food was eaten, but the feeding was incomplete."
+    },
+    {
+      "outcome_id": "refused",
+      "display_name": "Refused",
+      "description": "The reptile did not accept the offered fruit mix."
+    },
+    {
+      "outcome_id": "skipped",
+      "display_name": "Skipped",
+      "description": "The feeding was intentionally skipped."
+    },
+    {
+      "outcome_id": "cancelled",
+      "display_name": "Cancelled",
+      "description": "The feeding was cancelled before completion."
+    }
+  ],
+  "context_fields": [
+    {
+      "field_id": "food_used",
+      "display_name": "Food Used",
+      "field_type": "text",
+      "required": false,
+      "metadata": {}
+    },
+    {
+      "field_id": "quantity",
+      "display_name": "Quantity",
+      "field_type": "number",
+      "unit": "g",
+      "required": false,
+      "metadata": {}
+    },
+    {
+      "field_id": "notes",
+      "display_name": "Notes",
+      "field_type": "text",
+      "required": false,
+      "metadata": {}
+    }
+  ],
+  "default_priority": "normal",
+  "estimated_duration": 10,
+  "completion_behavior": {
+    "create_care_event": true,
+    "supports_follow_up_task": true,
+    "supports_workflow": true,
+    "metadata": {}
+  },
+  "workflow_definition": {},
+  "metadata": {
+    "audience": "core"
+  },
+  "schema_version": 1,
+  "template_version": 1
+}

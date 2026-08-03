@@ -1,0 +1,54 @@
+{
+  "template_id": "builtin:health_check",
+  "display_name": "Health Check",
+  "description": "Perform a structured routine wellness observation.",
+  "category": "observation",
+  "icon": "mdi:stethoscope",
+  "expected_outcomes": [
+    {
+      "outcome_id": "normal",
+      "display_name": "Normal",
+      "description": "No unusual observations were noted."
+    },
+    {
+      "outcome_id": "noted_concern",
+      "display_name": "Noted Concern",
+      "description": "Something observable was noted for later review."
+    },
+    {
+      "outcome_id": "skipped",
+      "display_name": "Skipped",
+      "description": "The health check was intentionally skipped."
+    }
+  ],
+  "context_fields": [
+    {
+      "field_id": "notes",
+      "display_name": "Notes",
+      "field_type": "text",
+      "required": false,
+      "metadata": {}
+    },
+    {
+      "field_id": "photo",
+      "display_name": "Photo",
+      "field_type": "photo",
+      "required": false,
+      "metadata": {}
+    }
+  ],
+  "default_priority": "normal",
+  "estimated_duration": 10,
+  "completion_behavior": {
+    "create_care_event": true,
+    "supports_follow_up_task": true,
+    "supports_workflow": true,
+    "metadata": {}
+  },
+  "workflow_definition": {},
+  "metadata": {
+    "audience": "core"
+  },
+  "schema_version": 1,
+  "template_version": 1
+}

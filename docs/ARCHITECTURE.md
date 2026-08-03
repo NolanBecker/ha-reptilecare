@@ -8,19 +8,19 @@ presents the result.
 ## Domain flow
 
 ```text
-Reptile
-   ↓
-CarePlans
-   ↓
-CareTasks
-   ↓
-CareEvents
-   ↓
-Timeline
-   ↓
-Coordinator
-   ↓
-Home Assistant Entities
+SpeciesProfile --> Reptile ----+
+                               |
+TaskTemplate ----------------> CarePlans
+                               ↓
+                            CareTasks
+                               ↓
+                            CareEvents
+                               ↓
+                             Timeline
+                               ↓
+                           Coordinator
+                               ↓
+                   Home Assistant Entities
 ```
 
 This is a dependency direction, not merely a screen flow. Each layer has a
@@ -79,6 +79,23 @@ multiple husbandry methodologies for the same species without declaring one
 universal approach. These are architectural possibilities, not committed
 roadmap items, and would require explicit sourcing, trust, versioning, and
 migration policies before implementation.
+
+## Task templates
+
+A **TaskTemplate** is an immutable reusable care-action definition. It answers
+what kind of work exists, such as **Feed Fruit Mix**, **Spot Clean**,
+**Medication**, or **Replace UVB**.
+
+Task Templates do not belong to a reptile, are not scheduled, and do not
+execute workflows. They define typed categories, allowed outcomes, optional
+structured context fields, presentation hints, and descriptive completion
+behavior placeholders for future workflow layers.
+
+Built-in JSON templates are loaded through a pure-domain registry during
+config-entry setup and exposed in config-entry runtime data beside the species
+registry and reptile repository. They are intentionally outside coordinator
+polling, event history, and entity projection concerns. See
+[Task templates](TASK_TEMPLATES.md) for the complete boundary.
 
 ## CarePlans
 
@@ -168,10 +185,10 @@ The coordinator is event-driven and has no polling interval. Future Home
 Assistant entities should consume coordinator data and Timeline queries rather
 than access persistence directly.
 
-Config-entry runtime data exposes the SpeciesProfile registry, Reptile
-repository, and the coordinator's current Timeline. The repository is not owned
-by the coordinator: individual-animal persistence and event-derived projections
-have separate responsibilities and lifecycles.
+Config-entry runtime data exposes the SpeciesProfile registry, TaskTemplate
+registry, Reptile repository, and the coordinator's current Timeline. The
+repository is not owned by the coordinator: individual-animal persistence and
+event-derived projections have separate responsibilities and lifecycles.
 
 ## Home Assistant entities
 
@@ -201,6 +218,7 @@ from authoritative history.
 
 - Domain logic must not depend on dashboard layout.
 - Entities and services must not write storage records directly.
+- TaskTemplates define reusable action vocabulary; they must not hold runtime state.
 - CarePlans define intent; they do not represent completion.
 - CareTasks represent actionable work; they are not the audit log.
 - CareEvents record facts; they do not prescribe future care.
