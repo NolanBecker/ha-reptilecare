@@ -379,7 +379,4 @@ async def test_restart_safe_reconciliation_recreates_only_missing_occurrence() -
     assert len(regenerated.created_task_ids) == 1
     recreated = restored_repository.get(regenerated.created_task_ids[0])
     assert recreated.generation_key == removed.generation_key
-    assert (
-        recreated.generation_reason
-        is CareTaskGenerationReason.SYSTEM_RECONCILIATION
-    )
+    assert recreated.generation_reason is CareTaskGenerationReason.SYSTEM_RECONCILIATION
