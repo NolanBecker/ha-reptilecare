@@ -73,9 +73,10 @@ ignore = [
 known-first-party = ["custom_components.reptilecare"]
 force-sort-within-sections = true
 
-[tool.setuptools.packages.find]
-include = ["custom_components.reptilecare*"]
-namespaces = true
+[tool.setuptools]
+packages = []
 
-[tool.setuptools.package-data]
-"custom_components.reptilecare.profiles" = ["*.json"]
+[tool.setuptools.data-files]
+"custom_components/reptilecare/profiles" = [
+  "custom_components/reptilecare/profiles/*.json",
+]
