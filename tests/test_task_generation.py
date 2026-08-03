@@ -221,6 +221,7 @@ async def test_task_generation_skips_disabled_and_expired_plans() -> None:
         _plan(enabled=False),
         _plan(
             care_plan_id=PLAN_ID_2,
+            effective_date=date(2026, 7, 30),
             optional_end_date=date(2026, 8, 1),
         ),
     )
@@ -378,4 +379,7 @@ async def test_restart_safe_reconciliation_recreates_only_missing_occurrence() -
     assert len(regenerated.created_task_ids) == 1
     recreated = restored_repository.get(regenerated.created_task_ids[0])
     assert recreated.generation_key == removed.generation_key
-    assert recreated.generation_reason is CareTaskGenerationReason.RECURRING_CARE_PLAN
+    assert (
+        recreated.generation_reason
+        is CareTaskGenerationReason.SYSTEM_RECONCILIATION
+    )

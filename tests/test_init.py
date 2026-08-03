@@ -89,7 +89,7 @@ async def test_setup_runs_startup_task_generation(
     hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Setup performs one bounded CareTask generation pass."""
-    from custom_components.reptilecare import CareTaskGenerator, async_setup_entry
+    from custom_components.reptilecare import CareTaskGenerator
 
     calls: list[datetime] = []
 
@@ -105,7 +105,9 @@ async def test_setup_runs_startup_task_generation(
     monkeypatch.setattr(CareTaskGenerator, "async_generate", _generate)
 
     entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
-    assert await async_setup_entry(hass, entry)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
     assert len(calls) == 1
     assert calls[0].tzinfo is not None
 
