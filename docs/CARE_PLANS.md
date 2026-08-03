@@ -14,8 +14,11 @@ Care Plans connect:
 - one `WorkflowGraph`
 - one descriptive schedule
 
-They do not create `CareTask` instances, execute workflows, record `CareEvent`
-history, or schedule Home Assistant jobs in this branch.
+They do not directly create `CareTask` instances, execute workflows, record
+`CareEvent` history, or schedule Home Assistant jobs themselves.
+
+The current CareTask branch consumes Care Plans through `CareTaskGenerator`,
+but the plan model remains purely descriptive intent.
 
 ## Purpose
 
@@ -119,7 +122,9 @@ This keeps the model compatible with future schedule types such as cron,
 weekday-based plans, seasonal plans, temporary plans, or conditional plans
 without redesigning the `CarePlan` boundary itself.
 
-Care Plans do not calculate next run times in this branch.
+Care Plans themselves do not calculate next run times. The separate
+`ScheduleCalculator` and `CareTaskGenerator` application layer now consumes
+this model to create bounded CareTask occurrences.
 
 ## Reminder configuration
 
@@ -168,26 +173,28 @@ All Care Plan models are immutable and validated at construction time.
 It does not schedule anything, generate tasks, execute workflows, or write
 CareEvents.
 
-## Relationship to future Care Tasks
+## Relationship to Care Tasks
 
 Care Plans define intent.
 
-Care Tasks will later represent actionable occurrences derived from that intent.
+Care Tasks now represent actionable persisted occurrences derived from that
+intent, but plan creation and plan mutation still remain separate from task
+execution and completion.
 
 ```mermaid
 flowchart LR
     Plan[CarePlan]
-    Service[future TaskWorkflowService]
-    Task[future CareTask]
+    Generator[CareTaskGenerator]
+    Task[CareTask]
     Event[CareEvent]
 
-    Plan --> Service
-    Service --> Task
+    Plan --> Generator
+    Generator --> Task
     Task --> Event
 ```
 
-That separation keeps planning, execution, and historical facts in distinct
-layers.
+That separation keeps planning, operational work, execution, and historical
+facts in distinct layers.
 
 ## Validation
 

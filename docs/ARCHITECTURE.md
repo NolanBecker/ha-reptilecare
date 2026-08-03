@@ -29,8 +29,9 @@ or below it.
 The [core domain design proposal](CORE_DOMAIN_DESIGN.md) extends these accepted
 boundaries with implementation-ready recommendations for `SpeciesProfile`,
 `TaskTemplate`, task outcomes, workflow-generated follow-ups, persistence, and
-Home Assistant adapters. It is a proposal rather than implemented runtime
-behavior.
+Home Assistant adapters. Some of its CareTask recommendations are now
+implemented through persistent task generation, but completion and workflow
+execution remain future behavior.
 
 ## Reptile
 
@@ -136,14 +137,25 @@ boundary.
 
 ## CareTasks
 
-A **CareTask** is a concrete action presented to the user. Tasks are derived
-from CarePlans and relevant history, although future versions may also support
-ad hoc tasks.
+A **CareTask** is a concrete persisted action derived from CarePlans and, in
+future branches, relevant history or ad hoc creation.
 
 CareTasks are ReptileCare’s primary user interaction. A keeper completes,
-defers, dismisses, or reviews a task; they should not need to create raw CareEvents
-or understand the CareEvent engine. Completing a CareTask records the appropriate
-CareEvent and allows the system to derive the next state.
+defers, dismisses, or reviews a task; they should not need to create raw
+CareEvents or understand the CareEvent engine. Completing a CareTask records
+the appropriate CareEvent and allows the system to derive the next state.
+
+The current branch implements:
+
+- a persistent `CareTask` model and repository
+- strict reference validation
+- deterministic `generation_key` idempotency
+- bounded startup generation and reconciliation
+- derived due-state projection
+
+It does not yet implement completion, services, notifications, entities, or
+workflow-graph execution. See [Care tasks](CARE_TASKS.md) for the full
+boundary.
 
 ## CareEvents
 
@@ -192,8 +204,9 @@ The **Timeline** is the read-only query layer over ordered CareEvents. It centra
 chronological ordering and common filters so future features do not repeatedly
 implement subtly different history logic.
 
-The Timeline can return all CareEvents, find the latest CareEvent, find the latest CareEvent
-of a type, filter by reptile, select a time interval, and count matching CareEvents.
+The Timeline can return all CareEvents, find the latest CareEvent, find the
+latest CareEvent of a type, filter by reptile, select a time interval, and
+count matching CareEvents.
 It does not decide when a reptile should be fed or whether a CareTask is due.
 Those projections belong to future CarePlan and CareTask layers.
 
@@ -212,10 +225,11 @@ Assistant entities should consume coordinator data and Timeline queries rather
 than access persistence directly.
 
 Config-entry runtime data exposes the SpeciesProfile registry, TaskTemplate
-registry, WorkflowGraph registry, Reptile repository, CarePlan repository, and
-the coordinator's current Timeline. The repositories are not owned by the
-coordinator: keeper-owned persistence and event-derived projections have
-separate responsibilities and lifecycles.
+registry, WorkflowGraph registry, Reptile repository, CarePlan repository,
+CareTask repository, schedule calculator, task generator, and the
+coordinator's current Timeline. The repositories are not owned by the
+coordinator: keeper-owned persistence, generated operational work, and
+event-derived projections have separate responsibilities and lifecycles.
 
 ## Home Assistant entities
 
@@ -246,7 +260,8 @@ from authoritative history.
 - Domain logic must not depend on dashboard layout.
 - Entities and services must not write storage records directly.
 - TaskTemplates define reusable action vocabulary; they must not hold runtime state.
-- WorkflowGraphs define reusable behavior vocabulary; they must not execute runtime state changes.
+- WorkflowGraphs define reusable behavior vocabulary; they must not execute
+  runtime state changes.
 - CarePlans define intent; they do not represent completion.
 - CarePlans may reference schedules and reminders; they must not execute either one.
 - CareTasks represent actionable work; they are not the audit log.

@@ -78,6 +78,11 @@ This phase should consume `WorkflowGraph` definitions through a future
 `TaskWorkflowService` rather than embedding workflow execution into templates or
 entities directly.
 
+The first CareTask foundation now exists: persistent task identity,
+deterministic generation, startup reconciliation, and derived due-state
+projection. Completion, follow-up execution, entities, and services remain
+future Phase 4 and Phase 5 work.
+
 ### Phase 5 — Home Assistant Services
 
 Expose stable actions for automations, scripts, voice assistants, and external

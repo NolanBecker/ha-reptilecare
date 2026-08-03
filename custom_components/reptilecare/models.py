@@ -14,11 +14,13 @@ from uuid import UUID, uuid4
 if TYPE_CHECKING:
     from .coordinator import ReptileCareCoordinator
     from .domain.care_plan import CarePlanRepository
+    from .domain.care_task import CareTaskRepository
     from .domain.reptile import ReptileRepository
     from .domain.species import SpeciesProfileRegistry
     from .domain.task_template import TaskTemplateRegistry
     from .domain.workflow import WorkflowRegistry
     from .storage import CareEventStore
+    from .task_generation import CareTaskGenerator, ScheduleCalculator
     from .timeline import Timeline
 
 
@@ -100,6 +102,9 @@ class ReptileCareRuntimeData:
     task_templates: TaskTemplateRegistry
     workflow_graphs: WorkflowRegistry
     care_plan_repository: CarePlanRepository
+    care_task_repository: CareTaskRepository
+    schedule_calculator: ScheduleCalculator
+    care_task_generator: CareTaskGenerator
 
     @property
     def timeline(self) -> Timeline:

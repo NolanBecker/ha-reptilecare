@@ -1,5 +1,7 @@
 """Tests for ReptileCare setup and lifecycle."""
 
+from datetime import datetime
+
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryError
@@ -14,6 +16,7 @@ from custom_components.reptilecare.models import (
     ReptileCareRuntimeData,
     ReptileCareSnapshot,
 )
+from custom_components.reptilecare.task_generation import TaskGenerationResult
 
 PIXEL_ID = "550e8400-e29b-41d4-a716-446655440000"
 
@@ -35,6 +38,7 @@ async def test_setup_and_unload_entry(hass: HomeAssistant) -> None:
     assert entry.runtime_data.task_templates.contains("builtin:feed_fruit")
     assert entry.runtime_data.workflow_graphs.contains("builtin:feeding_cycle")
     assert entry.runtime_data.care_plan_repository.all() == ()
+    assert entry.runtime_data.care_task_repository.all() == ()
     assert entry.runtime_data.reptile_repository.all() == ()
 
     event = CareEvent(reptile_id=PIXEL_ID, event_type=CareEventType.FEEDING)
@@ -57,6 +61,7 @@ async def test_reload_rebuilds_species_registry(hass: HomeAssistant) -> None:
     original_templates = entry.runtime_data.task_templates
     original_workflows = entry.runtime_data.workflow_graphs
     original_care_plans = entry.runtime_data.care_plan_repository
+    original_tasks = entry.runtime_data.care_task_repository
     pixel = Reptile(
         reptile_id=PIXEL_ID,
         display_name="Pixel",
@@ -71,11 +76,40 @@ async def test_reload_rebuilds_species_registry(hass: HomeAssistant) -> None:
     assert entry.runtime_data.task_templates is not original_templates
     assert entry.runtime_data.workflow_graphs is not original_workflows
     assert entry.runtime_data.care_plan_repository is not original_care_plans
+    assert entry.runtime_data.care_task_repository is not original_tasks
     assert entry.runtime_data.reptile_repository.get(PIXEL_ID) == pixel
     assert entry.runtime_data.species_profiles.contains("builtin:gargoyle_gecko")
     assert entry.runtime_data.task_templates.contains("builtin:feed_fruit")
     assert entry.runtime_data.workflow_graphs.contains("builtin:feeding_cycle")
     assert entry.runtime_data.care_plan_repository.all() == ()
+    assert entry.runtime_data.care_task_repository.all() == ()
+
+
+async def test_setup_runs_startup_task_generation(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Setup performs one bounded CareTask generation pass."""
+    from custom_components.reptilecare import CareTaskGenerator
+
+    calls: list[datetime] = []
+
+    async def _generate(
+        self: CareTaskGenerator,
+        *,
+        now: datetime,
+        **_: object,
+    ) -> TaskGenerationResult:
+        calls.append(now)
+        return TaskGenerationResult()
+
+    monkeypatch.setattr(CareTaskGenerator, "async_generate", _generate)
+
+    entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert len(calls) == 1
+    assert calls[0].tzinfo is not None
 
 
 async def test_invalid_builtin_profile_fails_setup(
