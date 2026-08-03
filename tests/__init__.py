@@ -1,1 +1,1 @@
-"""Tests for LizardCare."""
+"""Tests for ReptileCare."""

@@ -1,0 +1,13 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "ReptileCare is already configured."
+    },
+    "step": {
+      "user": {
+        "description": "Set up ReptileCare. Reptiles and CareEvents will be added in future releases.",
+        "title": "Set up ReptileCare"
+      }
+    }
+  }
+}

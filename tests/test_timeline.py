@@ -4,19 +4,19 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from custom_components.lizardcare.models import EventType, LizardCareEvent
-from custom_components.lizardcare.timeline import Timeline
+from custom_components.reptilecare.models import CareEvent, CareEventType
+from custom_components.reptilecare.timeline import Timeline
 
 BASE_TIME = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 def _event(
-    event_type: EventType,
+    event_type: CareEventType,
     hour: int,
     reptile_id: str = "pixel",
-) -> LizardCareEvent:
+) -> CareEvent:
     """Create a deterministic timeline event."""
-    return LizardCareEvent(
+    return CareEvent(
         reptile_id=reptile_id,
         event_type=event_type,
         timestamp=BASE_TIME + timedelta(hours=hour),
@@ -25,23 +25,25 @@ def _event(
 
 def test_timeline_orders_and_filters_events() -> None:
     """Test ordering and reusable timeline filters."""
-    feeding = _event(EventType.FEEDING, 1)
-    weight = _event(EventType.WEIGHT, 2)
-    other = _event(EventType.SHED, 3, "echo")
-    clean = _event(EventType.SPOT_CLEAN, 4)
+    feeding = _event(CareEventType.FEEDING, 1)
+    weight = _event(CareEventType.WEIGHT, 2)
+    other = _event(CareEventType.SHED, 3, "echo")
+    clean = _event(CareEventType.SPOT_CLEAN, 4)
     timeline = Timeline((clean, other, weight, feeding))
 
     assert timeline.all_events() == (feeding, weight, other, clean)
     assert timeline.latest_event() is clean
-    assert timeline.latest_event_of_type(EventType.WEIGHT) is weight
-    assert timeline.latest_event_of_type(EventType.SHED, reptile_id="pixel") is None
+    assert timeline.latest_event_of_type(CareEventType.WEIGHT) is weight
+    assert timeline.latest_event_of_type(CareEventType.SHED, reptile_id="pixel") is None
     assert timeline.events_for_reptile("pixel") == (feeding, weight, clean)
     assert timeline.events_between(
         BASE_TIME + timedelta(hours=2),
         BASE_TIME + timedelta(hours=3),
     ) == (weight, other)
     assert timeline.event_count() == 4
-    assert timeline.event_count(reptile_id="pixel", event_type=EventType.FEEDING) == 1
+    assert (
+        timeline.event_count(reptile_id="pixel", event_type=CareEventType.FEEDING) == 1
+    )
 
 
 def test_empty_timeline_and_invalid_interval() -> None:

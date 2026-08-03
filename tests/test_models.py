@@ -1,16 +1,16 @@
-"""Tests for shared LizardCare models."""
+"""Tests for shared ReptileCare models."""
 
 from datetime import UTC, datetime
 from uuid import UUID
 
 import pytest
 
-from custom_components.lizardcare.models import EventType, LizardCareEvent, Reptile
+from custom_components.reptilecare.models import CareEvent, CareEventType, Reptile
 
 
 def test_event_types_are_stable() -> None:
     """Test the canonical initial event vocabulary."""
-    assert {event_type.value for event_type in EventType} == {
+    assert {event_type.value for event_type in CareEventType} == {
         "deep_clean",
         "feeding",
         "food_removed",
@@ -25,13 +25,13 @@ def test_event_types_are_stable() -> None:
 def test_events_receive_unique_ids_and_freeze_metadata() -> None:
     """Test event identity, UTC normalization, and metadata immutability."""
     metadata = {"foods": ["cricket"]}
-    first = LizardCareEvent(
+    first = CareEvent(
         reptile_id="pixel",
-        event_type=EventType.FEEDING,
+        event_type=CareEventType.FEEDING,
         timestamp=datetime(2026, 1, 1, tzinfo=UTC),
         metadata=metadata,
     )
-    second = LizardCareEvent(reptile_id="pixel", event_type=EventType.FEEDING)
+    second = CareEvent(reptile_id="pixel", event_type=CareEventType.FEEDING)
     metadata["foods"].append("roach")
 
     assert isinstance(first.event_id, UUID)
@@ -45,9 +45,9 @@ def test_events_receive_unique_ids_and_freeze_metadata() -> None:
 def test_event_rejects_naive_timestamp() -> None:
     """Test that event timestamps must identify a timezone."""
     with pytest.raises(ValueError, match="timezone-aware"):
-        LizardCareEvent(
+        CareEvent(
             reptile_id="pixel",
-            event_type=EventType.WEIGHT,
+            event_type=CareEventType.WEIGHT,
             timestamp=datetime(2026, 1, 1),  # noqa: DTZ001
         )
 

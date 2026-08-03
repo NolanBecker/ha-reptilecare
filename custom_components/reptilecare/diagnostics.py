@@ -1,4 +1,4 @@
-"""Diagnostics support for LizardCare."""
+"""Diagnostics support for ReptileCare."""
 
 from __future__ import annotations
 
@@ -6,14 +6,14 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 
-from . import LizardCareConfigEntry
+from . import ReptileCareConfigEntry
 from .const import DOMAIN
 
 
 async def async_get_config_entry_diagnostics(
-    _hass: HomeAssistant, entry: LizardCareConfigEntry
+    _hass: HomeAssistant, entry: ReptileCareConfigEntry
 ) -> dict[str, Any]:
-    """Return safe diagnostics for a LizardCare config entry."""
+    """Return safe diagnostics for a ReptileCare config entry."""
     return {
         "domain": DOMAIN,
         "config_entry": {

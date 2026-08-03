@@ -1,4 +1,4 @@
-"""Shared fixtures for LizardCare tests."""
+"""Shared fixtures for ReptileCare tests."""
 
 import pytest
 

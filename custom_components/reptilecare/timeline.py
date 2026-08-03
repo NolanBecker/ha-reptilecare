@@ -1,36 +1,36 @@
-"""Reusable queries over immutable LizardCare event history."""
+"""Reusable queries over immutable ReptileCare CareEvent history."""
 
 from __future__ import annotations
 
 from collections.abc import Iterable
 from datetime import datetime
 
-from .models import EventType, LizardCareEvent
+from .models import CareEvent, CareEventType
 
 
 class Timeline:
-    """Provide deterministic read-only queries over an event history."""
+    """Provide deterministic read-only queries over CareEvent history."""
 
-    def __init__(self, events: Iterable[LizardCareEvent] = ()) -> None:
+    def __init__(self, events: Iterable[CareEvent] = ()) -> None:
         """Initialize a timeline in chronological order."""
         self._events = tuple(
             sorted(events, key=lambda event: (event.timestamp, event.event_id.int))
         )
 
-    def all_events(self) -> tuple[LizardCareEvent, ...]:
+    def all_events(self) -> tuple[CareEvent, ...]:
         """Return every event in chronological order."""
         return self._events
 
-    def latest_event(self) -> LizardCareEvent | None:
+    def latest_event(self) -> CareEvent | None:
         """Return the most recent event, if one exists."""
         return self._events[-1] if self._events else None
 
     def latest_event_of_type(
         self,
-        event_type: EventType,
+        event_type: CareEventType,
         *,
         reptile_id: str | None = None,
-    ) -> LizardCareEvent | None:
+    ) -> CareEvent | None:
         """Return the most recent matching event."""
         return next(
             (
@@ -42,7 +42,7 @@ class Timeline:
             None,
         )
 
-    def events_for_reptile(self, reptile_id: str) -> tuple[LizardCareEvent, ...]:
+    def events_for_reptile(self, reptile_id: str) -> tuple[CareEvent, ...]:
         """Return all events belonging to one reptile."""
         return tuple(event for event in self._events if event.reptile_id == reptile_id)
 
@@ -52,7 +52,7 @@ class Timeline:
         end: datetime,
         *,
         reptile_id: str | None = None,
-    ) -> tuple[LizardCareEvent, ...]:
+    ) -> tuple[CareEvent, ...]:
         """Return events in the inclusive UTC-aware interval."""
         if (
             start.tzinfo is None
@@ -74,7 +74,7 @@ class Timeline:
         self,
         *,
         reptile_id: str | None = None,
-        event_type: EventType | None = None,
+        event_type: CareEventType | None = None,
     ) -> int:
         """Count events matching optional reptile and type filters."""
         return sum(

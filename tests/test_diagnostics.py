@@ -1,10 +1,10 @@
-"""Tests for LizardCare diagnostics."""
+"""Tests for ReptileCare diagnostics."""
 
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.lizardcare.const import DOMAIN, INTEGRATION_NAME
-from custom_components.lizardcare.diagnostics import (
+from custom_components.reptilecare.const import DOMAIN, INTEGRATION_NAME
+from custom_components.reptilecare.diagnostics import (
     async_get_config_entry_diagnostics,
 )
 
@@ -21,5 +21,8 @@ async def test_diagnostics(hass: HomeAssistant) -> None:
     assert diagnostics == {
         "domain": DOMAIN,
         "config_entry": {"version": 1, "minor_version": 1},
-        "runtime": {"event_count": 0, "storage": "HomeAssistantEventStore"},
+        "runtime": {
+            "event_count": 0,
+            "storage": "HomeAssistantCareEventStore",
+        },
     }
