@@ -1,0 +1,54 @@
+{
+  "template_id": "builtin:replace_uvb",
+  "display_name": "Replace UVB",
+  "description": "Replace a UVB bulb or fixture component.",
+  "category": "lighting",
+  "icon": "mdi:lightbulb",
+  "expected_outcomes": [
+    {
+      "outcome_id": "completed",
+      "display_name": "Completed",
+      "description": "The UVB replacement was completed."
+    },
+    {
+      "outcome_id": "deferred",
+      "display_name": "Deferred",
+      "description": "The UVB replacement was postponed."
+    },
+    {
+      "outcome_id": "skipped",
+      "display_name": "Skipped",
+      "description": "The replacement was intentionally skipped."
+    }
+  ],
+  "context_fields": [
+    {
+      "field_id": "bulb_model",
+      "display_name": "Bulb Model",
+      "field_type": "text",
+      "required": false,
+      "metadata": {}
+    },
+    {
+      "field_id": "notes",
+      "display_name": "Notes",
+      "field_type": "text",
+      "required": false,
+      "metadata": {}
+    }
+  ],
+  "default_priority": "high",
+  "estimated_duration": 15,
+  "completion_behavior": {
+    "create_care_event": true,
+    "supports_follow_up_task": true,
+    "supports_workflow": true,
+    "metadata": {}
+  },
+  "workflow_definition": {},
+  "metadata": {
+    "audience": "core"
+  },
+  "schema_version": 1,
+  "template_version": 1
+}

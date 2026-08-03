@@ -80,3 +80,6 @@ packages = []
 "custom_components/reptilecare/profiles" = [
   "custom_components/reptilecare/profiles/*.json",
 ]
+"custom_components/reptilecare/task_templates" = [
+  "custom_components/reptilecare/task_templates/*.json",
+]

@@ -12,6 +12,7 @@ from homeassistant.exceptions import ConfigEntryError
 from .coordinator import ReptileCareCoordinator
 from .domain.reptile import ReptileError, ReptileRepository
 from .domain.species import SpeciesProfileError, SpeciesProfileRegistry
+from .domain.task_template import TaskTemplateError, TaskTemplateRegistry
 from .reptile_storage import HomeAssistantReptilePersistence
 from .storage import HomeAssistantCareEventStore
 
@@ -28,6 +29,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
         )
     except SpeciesProfileError as err:
         raise ConfigEntryError("Unable to load built-in species profiles") from err
+    try:
+        task_templates = await hass.async_add_executor_job(
+            TaskTemplateRegistry.load_builtin_templates
+        )
+    except TaskTemplateError as err:
+        raise ConfigEntryError("Unable to load built-in task templates") from err
 
     reptile_repository = ReptileRepository(
         species_profiles,
@@ -52,6 +59,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
         event_store=store,
         species_profiles=species_profiles,
         reptile_repository=reptile_repository,
+        task_templates=task_templates,
     )
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
 

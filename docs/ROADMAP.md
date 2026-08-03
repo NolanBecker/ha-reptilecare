@@ -50,6 +50,12 @@ conditions.
 - Pausing, resuming, and revising plans without rewriting history
 - Separation between plan definitions and completed-care CareEvents
 
+Phase 3 now begins with three upstream foundations already in place:
+`SpeciesProfileRegistry` for shared husbandry guidance, `TaskTemplateRegistry`
+for reusable care-action definitions, and `ReptileRepository` for keeper-owned
+animal identity. Future CarePlans should reference these foundations rather than
+redefining action vocabulary or runtime reptile data.
+
 ### Phase 4 — Care Tasks
 
 Turn CarePlans into concrete, user-facing actions.

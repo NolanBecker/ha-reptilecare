@@ -1,0 +1,52 @@
+{
+  "template_id": "builtin:spot_clean",
+  "display_name": "Spot Clean",
+  "description": "Remove visible waste and lightly tidy the enclosure.",
+  "category": "cleaning",
+  "icon": "mdi:broom",
+  "expected_outcomes": [
+    {
+      "outcome_id": "completed",
+      "display_name": "Completed",
+      "description": "The requested cleaning was completed."
+    },
+    {
+      "outcome_id": "partially_completed",
+      "display_name": "Partially Completed",
+      "description": "Only part of the requested cleaning was finished."
+    },
+    {
+      "outcome_id": "nothing_to_clean",
+      "display_name": "Nothing to Clean",
+      "description": "The enclosure did not need spot cleaning."
+    },
+    {
+      "outcome_id": "skipped",
+      "display_name": "Skipped",
+      "description": "The cleaning was intentionally skipped."
+    }
+  ],
+  "context_fields": [
+    {
+      "field_id": "notes",
+      "display_name": "Notes",
+      "field_type": "text",
+      "required": false,
+      "metadata": {}
+    }
+  ],
+  "default_priority": "normal",
+  "estimated_duration": 10,
+  "completion_behavior": {
+    "create_care_event": true,
+    "supports_follow_up_task": false,
+    "supports_workflow": false,
+    "metadata": {}
+  },
+  "workflow_definition": {},
+  "metadata": {
+    "audience": "core"
+  },
+  "schema_version": 1,
+  "template_version": 1
+}

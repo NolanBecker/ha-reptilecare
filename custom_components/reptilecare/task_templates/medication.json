@@ -1,0 +1,59 @@
+{
+  "template_id": "builtin:medication",
+  "display_name": "Medication",
+  "description": "Administer a keeper-directed medication dose.",
+  "category": "medication",
+  "icon": "mdi:pill",
+  "expected_outcomes": [
+    {
+      "outcome_id": "administered",
+      "display_name": "Administered",
+      "description": "The medication dose was successfully administered."
+    },
+    {
+      "outcome_id": "refused",
+      "display_name": "Refused",
+      "description": "The reptile refused the medication."
+    },
+    {
+      "outcome_id": "missed",
+      "display_name": "Missed",
+      "description": "The intended dose window was missed."
+    },
+    {
+      "outcome_id": "regurgitated",
+      "display_name": "Regurgitated",
+      "description": "The dose was expelled after administration."
+    }
+  ],
+  "context_fields": [
+    {
+      "field_id": "dosage",
+      "display_name": "Dosage",
+      "field_type": "text",
+      "required": false,
+      "metadata": {}
+    },
+    {
+      "field_id": "notes",
+      "display_name": "Notes",
+      "field_type": "text",
+      "required": false,
+      "metadata": {}
+    }
+  ],
+  "default_priority": "high",
+  "estimated_duration": 10,
+  "completion_behavior": {
+    "create_care_event": true,
+    "supports_follow_up_task": true,
+    "supports_workflow": true,
+    "metadata": {}
+  },
+  "workflow_definition": {},
+  "metadata": {
+    "audience": "core"
+  },
+  "schema_version": 1,
+  "template_version": 1
+}

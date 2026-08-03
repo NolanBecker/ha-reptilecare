@@ -1,0 +1,47 @@
+{
+  "template_id": "builtin:deep_clean",
+  "display_name": "Deep Clean",
+  "description": "Perform a full enclosure cleaning and reset routine.",
+  "category": "cleaning",
+  "icon": "mdi:spray-bottle",
+  "expected_outcomes": [
+    {
+      "outcome_id": "completed",
+      "display_name": "Completed",
+      "description": "The full deep clean was completed."
+    },
+    {
+      "outcome_id": "partially_completed",
+      "display_name": "Partially Completed",
+      "description": "Only part of the deep clean was completed."
+    },
+    {
+      "outcome_id": "skipped",
+      "display_name": "Skipped",
+      "description": "The cleaning was intentionally skipped."
+    }
+  ],
+  "context_fields": [
+    {
+      "field_id": "notes",
+      "display_name": "Notes",
+      "field_type": "text",
+      "required": false,
+      "metadata": {}
+    }
+  ],
+  "default_priority": "high",
+  "estimated_duration": 45,
+  "completion_behavior": {
+    "create_care_event": true,
+    "supports_follow_up_task": false,
+    "supports_workflow": false,
+    "metadata": {}
+  },
+  "workflow_definition": {},
+  "metadata": {
+    "audience": "core"
+  },
+  "schema_version": 1,
+  "template_version": 1
+}

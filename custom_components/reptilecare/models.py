@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from .coordinator import ReptileCareCoordinator
     from .domain.reptile import ReptileRepository
     from .domain.species import SpeciesProfileRegistry
+    from .domain.task_template import TaskTemplateRegistry
     from .storage import CareEventStore
     from .timeline import Timeline
 
@@ -94,6 +95,7 @@ class ReptileCareRuntimeData:
     event_store: CareEventStore
     species_profiles: SpeciesProfileRegistry
     reptile_repository: ReptileRepository
+    task_templates: TaskTemplateRegistry
 
     @property
     def timeline(self) -> Timeline:

@@ -23,6 +23,7 @@ The current foundation provides:
 - An event-driven `DataUpdateCoordinator` with no periodic polling
 - Immutable event and reptile domain models
 - A versioned species-profile domain model and built-in profile registry
+- A versioned task-template domain model and built-in task template registry
 - A validated multi-reptile repository with immutable keeper-owned records
 - Separate, versioned persistence for reptiles and CareEvent history
 - Versioned persistent CareEvent history backed by Home Assistant storage
@@ -98,6 +99,10 @@ Completing a CareTask records an immutable CareEvent; Timeline and Coordinator
 layers derive the information exposed to Home Assistant. CareEvents are the
 historical audit log, not the primary user interaction.
 
+Reusable `TaskTemplate` definitions now sit between shared reference data and
+future CarePlans. They describe what kind of action exists without attaching
+that action to a reptile, schedule, or workflow runtime.
+
 ## Project documentation
 
 - [Vision](VISION.md) — mission, philosophy, long-term direction, and non-goals
@@ -107,6 +112,8 @@ historical audit log, not the primary user interaction.
   boundaries for profiles, plans, tasks, outcomes, events, and workflows
 - [Species profiles](docs/SPECIES_PROFILES.md) — profile schema, validation,
   sourcing policy, and compatibility rules
+- [Task templates](docs/TASK_TEMPLATES.md) — reusable care-action definitions,
+  typed outcomes, context fields, and registry behavior
 - [Reptiles](docs/REPTILES.md) — individual-animal ownership, overrides,
   repository behavior, persistence, and archival policy
 - [UX principles](docs/UX_PRINCIPLES.md) — standards for a calm, care-first
