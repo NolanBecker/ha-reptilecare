@@ -155,10 +155,12 @@ async def test_platform_forwarding_and_unload_paths(
     """Setup forwards configured platforms and unload returns platform result."""
     from custom_components import reptilecare
     from custom_components.reptilecare import async_setup_entry, async_unload_entry
+    from custom_components.reptilecare.coordinator import ReptileCareCoordinator
 
     entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
     forwarded: list[tuple[str, tuple[str, ...]]] = []
     unloaded: list[tuple[str, tuple[str, ...]]] = []
+    refreshed: list[str] = []
 
     monkeypatch.setattr(reptilecare, "PLATFORMS", ("sensor",))
 
@@ -180,7 +182,15 @@ async def test_platform_forwarding_and_unload_paths(
         hass.config_entries, "async_unload_platforms", _unload_platforms
     )
 
+    async def _first_refresh(self: ReptileCareCoordinator) -> None:
+        refreshed.append(self.config_entry.entry_id)
+
+    monkeypatch.setattr(
+        ReptileCareCoordinator, "async_config_entry_first_refresh", _first_refresh
+    )
+
     assert await async_setup_entry(hass, entry)
+    assert refreshed == [entry.entry_id]
     assert forwarded == [(entry.entry_id, ("sensor",))]
     assert await async_unload_entry(hass, entry) is False
     assert unloaded == [(entry.entry_id, ("sensor",))]
