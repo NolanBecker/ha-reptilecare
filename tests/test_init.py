@@ -154,18 +154,36 @@ async def test_platform_forwarding_and_unload_paths(
 ) -> None:
     """Setup forwards configured platforms and unload returns platform result."""
     from custom_components import reptilecare
+    from custom_components.reptilecare import async_setup_entry, async_unload_entry
 
     entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
-    entry.add_to_hass(hass)
+    forwarded: list[tuple[str, tuple[str, ...]]] = []
+    unloaded: list[tuple[str, tuple[str, ...]]] = []
 
     monkeypatch.setattr(reptilecare, "PLATFORMS", ("sensor",))
 
-    assert await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
+    async def _forward_entry_setups(
+        config_entry: MockConfigEntry, platforms: tuple[str, ...]
+    ) -> None:
+        forwarded.append((config_entry.entry_id, platforms))
 
-    assert entry.state is ConfigEntryState.LOADED
-    assert await hass.config_entries.async_unload(entry.entry_id)
-    await hass.async_block_till_done()
+    async def _unload_platforms(
+        config_entry: MockConfigEntry, platforms: tuple[str, ...]
+    ) -> bool:
+        unloaded.append((config_entry.entry_id, platforms))
+        return False
+
+    monkeypatch.setattr(
+        hass.config_entries, "async_forward_entry_setups", _forward_entry_setups
+    )
+    monkeypatch.setattr(
+        hass.config_entries, "async_unload_platforms", _unload_platforms
+    )
+
+    assert await async_setup_entry(hass, entry)
+    assert forwarded == [(entry.entry_id, ("sensor",))]
+    assert await async_unload_entry(hass, entry) is False
+    assert unloaded == [(entry.entry_id, ("sensor",))]
 
 
 async def test_reload_listener_delegates_to_config_entries(
