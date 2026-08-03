@@ -1,4 +1,8 @@
-# ReptileCare
+<p align="center">
+  <img src="brand/logo.png" alt="ReptileCare" width="560">
+</p>
+
+<p align="center"><strong>Care today. Thrive tomorrow.</strong></p>
 
 ReptileCare is a Home Assistant integration for reptile husbandry. It is being
 built around an event-driven, multi-reptile architecture so care
