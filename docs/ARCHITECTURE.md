@@ -46,7 +46,9 @@ date, sex, and notes. It does not store derived care state such as â€œlast fedâ€
 ## Species profiles
 
 A **SpeciesProfile** is versioned reference data containing reusable species
-identity and reviewed defaults. It is separate from a Reptile: selecting a
+identity and reviewed husbandry recommendations. Recommendations do not
+represent live enclosure conditions and remain separate from future Home
+Assistant sensor entities. A profile is separate from a Reptile: selecting a
 profile must not replace the individual animal's stable identity or silently
 overwrite reptile-specific CarePlan choices.
 
@@ -55,6 +57,21 @@ config-entry setup. The registry is exposed in config-entry runtime data for
 future CarePlan and user-interface layers. It does not participate in
 coordinator polling, event history, or Home Assistant entity mapping. See
 [Species profiles](SPECIES_PROFILES.md) for its validation and sourcing policy.
+
+`ProfileOrigin` provides a typed, serialized provenance marker. Bundled
+profiles use `builtin`, which is the only currently supported source. Reserved
+`community` and `user` values prepare the domain vocabulary for possible later
+expansion without adding loading or management behavior today.
+
+### Possible future evolution
+
+The Species Profile boundary could eventually support community-maintained
+profile libraries, user-created profiles, or curated **Care Packs** that group
+compatible profile and care-plan recommendations. It could also represent
+multiple husbandry methodologies for the same species without declaring one
+universal approach. These are architectural possibilities, not committed
+roadmap items, and would require explicit sourcing, trust, versioning, and
+migration policies before implementation.
 
 ## CarePlans
 

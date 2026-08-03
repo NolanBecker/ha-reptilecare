@@ -8,5 +8,6 @@
   "default_task_template_ids": [],
   "references": [],
   "schema_version": 1,
-  "profile_version": 1
+  "profile_version": 1,
+  "origin": "builtin"
 }
