@@ -57,6 +57,10 @@ definitions, and `ReptileRepository` for keeper-owned animal identity. Future
 CarePlans should reference these foundations rather than redefining action
 vocabulary, behavior vocabulary, or runtime reptile data.
 
+The CarePlan foundation now also establishes persistent keeper-owned plan
+identity, descriptive interval schedules, and descriptive reminder
+configuration without generating tasks or executing workflows yet.
+
 ### Phase 4 — Care Tasks
 
 Turn CarePlans into concrete, user-facing actions.

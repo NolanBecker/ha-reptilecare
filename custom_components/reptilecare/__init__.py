@@ -9,7 +9,9 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryError
 
+from .care_plan_storage import HomeAssistantCarePlanPersistence
 from .coordinator import ReptileCareCoordinator
+from .domain.care_plan import CarePlanError, CarePlanRepository
 from .domain.reptile import ReptileError, ReptileRepository
 from .domain.species import SpeciesProfileError, SpeciesProfileRegistry
 from .domain.task_template import TaskTemplateError, TaskTemplateRegistry
@@ -51,6 +53,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
         await reptile_repository.async_load()
     except ReptileError as err:
         raise ConfigEntryError("Unable to load ReptileCare reptiles") from err
+    care_plan_repository = CarePlanRepository(
+        reptile_repository,
+        task_templates,
+        workflow_graphs,
+        HomeAssistantCarePlanPersistence(hass, entry.entry_id),
+    )
+    try:
+        await care_plan_repository.async_load()
+    except CarePlanError as err:
+        raise ConfigEntryError("Unable to load ReptileCare care plans") from err
 
     store = HomeAssistantCareEventStore(hass, entry.entry_id)
     await store.async_load()
@@ -68,6 +80,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
         reptile_repository=reptile_repository,
         task_templates=task_templates,
         workflow_graphs=workflow_graphs,
+        care_plan_repository=care_plan_repository,
     )
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
 

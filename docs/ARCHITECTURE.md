@@ -123,6 +123,17 @@ without rewriting what happened in the past. Plans should remain independent of
 Home Assistant entity state so the same domain rules can support dashboards,
 services, notifications, and tests.
 
+The current CarePlan foundation connects one reptile, one reusable
+`TaskTemplate`, one reusable `WorkflowGraph`, one descriptive schedule, and one
+descriptive reminder configuration. It does not generate `CareTask` instances
+or execute workflows.
+
+Care Plans are stored independently from reptiles, templates, workflows, and
+CareEvent history. `CarePlanRepository` validates those references and exposes
+lookup, listing, enable, disable, add, update, and remove operations through
+config-entry runtime data. See [Care plans](CARE_PLANS.md) for the complete
+boundary.
+
 ## CareTasks
 
 A **CareTask** is a concrete action presented to the user. Tasks are derived
@@ -201,10 +212,10 @@ Assistant entities should consume coordinator data and Timeline queries rather
 than access persistence directly.
 
 Config-entry runtime data exposes the SpeciesProfile registry, TaskTemplate
-registry, WorkflowGraph registry, Reptile repository, and the coordinator's
-current Timeline. The repository is not owned by the coordinator:
-individual-animal persistence and event-derived projections have separate
-responsibilities and lifecycles.
+registry, WorkflowGraph registry, Reptile repository, CarePlan repository, and
+the coordinator's current Timeline. The repositories are not owned by the
+coordinator: keeper-owned persistence and event-derived projections have
+separate responsibilities and lifecycles.
 
 ## Home Assistant entities
 
@@ -237,6 +248,7 @@ from authoritative history.
 - TaskTemplates define reusable action vocabulary; they must not hold runtime state.
 - WorkflowGraphs define reusable behavior vocabulary; they must not execute runtime state changes.
 - CarePlans define intent; they do not represent completion.
+- CarePlans may reference schedules and reminders; they must not execute either one.
 - CareTasks represent actionable work; they are not the audit log.
 - CareEvents record facts; they do not prescribe future care.
 - Timeline queries history; it does not implement husbandry policy.

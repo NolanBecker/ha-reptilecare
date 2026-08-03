@@ -12,7 +12,7 @@ reptile needs today.
 
 > [!NOTE]
 > ReptileCare currently provides domain and persistence foundations. It does
-> not yet expose reptile management UI, entities, CarePlans, or CareTasks.
+> not yet expose reptile management UI, entities, or CareTasks.
 
 ## Features
 
@@ -25,6 +25,7 @@ The current foundation provides:
 - A versioned species-profile domain model and built-in profile registry
 - A versioned task-template domain model and built-in task template registry
 - A versioned workflow-graph domain model and built-in workflow graph registry
+- A versioned care-plan domain model and persistent care plan repository
 - A validated multi-reptile repository with immutable keeper-owned records
 - Separate, versioned persistence for reptiles and CareEvent history
 - Versioned persistent CareEvent history backed by Home Assistant storage
@@ -108,6 +109,10 @@ Reusable `WorkflowGraph` definitions now describe what follow-up behavior may
 exist after a task outcome without executing that behavior yet. They are loaded
 beside task templates and prepare the future `TaskWorkflowService`.
 
+Keeper-owned `CarePlan` definitions now connect one reptile to one reusable
+task template and one reusable workflow graph with descriptive schedule and
+reminder configuration, without generating CareTasks yet.
+
 ## Project documentation
 
 - [Vision](VISION.md) — mission, philosophy, long-term direction, and non-goals
@@ -121,6 +126,8 @@ beside task templates and prepare the future `TaskWorkflowService`.
   typed outcomes, context fields, and registry behavior
 - [Workflow graphs](docs/WORKFLOW_GRAPHS.md) — reusable post-outcome behavior
   definitions, graph validation, and registry behavior
+- [Care plans](docs/CARE_PLANS.md) — keeper-owned care intent, scheduling
+  abstraction, persistence, and repository behavior
 - [Reptiles](docs/REPTILES.md) — individual-animal ownership, overrides,
   repository behavior, persistence, and archival policy
 - [UX principles](docs/UX_PRINCIPLES.md) — standards for a calm, care-first

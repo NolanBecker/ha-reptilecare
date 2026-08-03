@@ -34,6 +34,7 @@ async def test_setup_and_unload_entry(hass: HomeAssistant) -> None:
     assert entry.runtime_data.species_profiles.contains("builtin:gargoyle_gecko")
     assert entry.runtime_data.task_templates.contains("builtin:feed_fruit")
     assert entry.runtime_data.workflow_graphs.contains("builtin:feeding_cycle")
+    assert entry.runtime_data.care_plan_repository.all() == ()
     assert entry.runtime_data.reptile_repository.all() == ()
 
     event = CareEvent(reptile_id=PIXEL_ID, event_type=CareEventType.FEEDING)
@@ -55,6 +56,7 @@ async def test_reload_rebuilds_species_registry(hass: HomeAssistant) -> None:
     original_repository = entry.runtime_data.reptile_repository
     original_templates = entry.runtime_data.task_templates
     original_workflows = entry.runtime_data.workflow_graphs
+    original_care_plans = entry.runtime_data.care_plan_repository
     pixel = Reptile(
         reptile_id=PIXEL_ID,
         display_name="Pixel",
@@ -68,10 +70,12 @@ async def test_reload_rebuilds_species_registry(hass: HomeAssistant) -> None:
     assert entry.runtime_data.reptile_repository is not original_repository
     assert entry.runtime_data.task_templates is not original_templates
     assert entry.runtime_data.workflow_graphs is not original_workflows
+    assert entry.runtime_data.care_plan_repository is not original_care_plans
     assert entry.runtime_data.reptile_repository.get(PIXEL_ID) == pixel
     assert entry.runtime_data.species_profiles.contains("builtin:gargoyle_gecko")
     assert entry.runtime_data.task_templates.contains("builtin:feed_fruit")
     assert entry.runtime_data.workflow_graphs.contains("builtin:feeding_cycle")
+    assert entry.runtime_data.care_plan_repository.all() == ()
 
 
 async def test_invalid_builtin_profile_fails_setup(
@@ -146,6 +150,22 @@ async def test_reptile_repository_load_failure_fails_setup(
     monkeypatch.setattr(ReptileRepository, "async_load", _raise_reptile_error)
     entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
     with pytest.raises(ConfigEntryError, match="load ReptileCare reptiles"):
+        await async_setup_entry(hass, entry)
+
+
+async def test_care_plan_repository_load_failure_fails_setup(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CarePlan persistence load failures surface as config-entry errors."""
+    from custom_components.reptilecare import CarePlanRepository, async_setup_entry
+    from custom_components.reptilecare.domain.care_plan import CarePlanError
+
+    async def _raise_care_plan_error(self: CarePlanRepository) -> None:
+        raise CarePlanError("unable to load care plans")
+
+    monkeypatch.setattr(CarePlanRepository, "async_load", _raise_care_plan_error)
+    entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
+    with pytest.raises(ConfigEntryError, match="load ReptileCare care plans"):
         await async_setup_entry(hass, entry)
 
 
