@@ -29,7 +29,7 @@ Allow keepers to create and maintain multiple reptile profiles.
 - Pixel, a Gargoyle Gecko, as the first complete development profile
 - Migration-safe persistence for reptile profiles
 
-### Phase 3 — CarePlans
+### Phase 3 — Care Plans
 
 Define what care an individual reptile should receive and under what
 conditions.
@@ -38,9 +38,9 @@ conditions.
 - Feeding and cleaning plans as the initial care domains
 - Clear recurrence and due-date semantics
 - Pausing, resuming, and revising plans without rewriting history
-- Separation between plan definitions and completed care CareEvents
+- Separation between plan definitions and completed-care CareEvents
 
-### Phase 4 — CareTasks
+### Phase 4 — Care Tasks
 
 Turn CarePlans into concrete, user-facing actions.
 
@@ -59,7 +59,7 @@ Expose stable actions for automations, scripts, voice assistants, and external
 clients.
 
 - Create and complete supported CareTasks
-- Record supported care CareEvents
+- Record supported CareEvents
 - Query or target reptiles using stable identifiers
 - Validate inputs through shared domain logic
 - Preserve backward compatibility as the service surface evolves

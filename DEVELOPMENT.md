@@ -34,7 +34,8 @@ label when the standard GitHub labels do not already communicate the work type.
 
 ## Project board
 
-The ReptileCare Roadmap project is the shared Kanban view for committed work:
+The [ReptileCare Roadmap project][project] is the shared Kanban view for
+committed work:
 
 - **Todo**: accepted and ready to be scheduled.
 - **In Progress**: actively being implemented or documented.
@@ -93,3 +94,5 @@ together. Close an epic only when its accepted children are complete or
 explicitly moved out of scope. Before closing a milestone, verify that its
 documentation, migrations, tests, and release notes accurately describe the
 delivered behavior.
+
+[project]: https://github.com/users/NolanBecker/projects/1

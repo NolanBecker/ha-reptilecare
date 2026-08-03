@@ -44,7 +44,8 @@ docs/event-migration-policy
 
 Follow the issue and project lifecycle in [DEVELOPMENT.md](../DEVELOPMENT.md):
 
-1. Select an accepted, unblocked issue from the ReptileCare Roadmap project.
+1. Select an accepted, unblocked issue from the
+   [ReptileCare Roadmap project](https://github.com/users/NolanBecker/projects/1).
 2. Move the issue to In Progress and confirm its acceptance criteria.
 3. Update local `main` from the upstream repository.
 4. Create a focused branch using the naming convention above.

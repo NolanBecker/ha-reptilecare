@@ -99,17 +99,22 @@ historical audit log, not the primary user interaction.
 - [Architecture](docs/ARCHITECTURE.md) — domain boundaries and data flow
 - [UX principles](docs/UX_PRINCIPLES.md) — standards for a calm, care-first
   experience
+- [Development workflow](DEVELOPMENT.md) — GitHub Issues, milestones, labels,
+  project board, and pull request lifecycle
 - [Contributing](docs/CONTRIBUTING.md) — branch workflow, quality requirements,
   and pull request expectations
+- [ReptileCare Roadmap project](https://github.com/users/NolanBecker/projects/1)
+  — live Kanban planning for committed work
 
 ## Roadmap summary
 
-- Establish the integration lifecycle and event/storage contracts
-- Add configuration for multi-reptile profiles
-- Introduce feeding, cleaning, weight, and shedding modules
-- Add health, notes, photos, and environmental tracking
-- Build schedules, reminders, and dashboard-friendly entities after the event
-  model is stable
+- Maintain the Home Assistant lifecycle and event/storage foundation
+- Add multi-reptile profile management
+- Define CarePlans and generate user-facing CareTasks
+- Expose stable Home Assistant services
+- Build reusable dashboard cards and the future ReptileCare Center
+- Add actionable notifications and derived statistics
+- Support structured health observations, photos, and growth tracking
 
 Pixel, a Gargoyle Gecko, is the first development reptile and will guide early
 use cases. ReptileCare is intentionally designed to support many individual
