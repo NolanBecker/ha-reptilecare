@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import dataclass, field
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
@@ -13,8 +13,10 @@ from uuid import UUID, uuid4
 
 if TYPE_CHECKING:
     from .coordinator import ReptileCareCoordinator
+    from .domain.reptile import ReptileRepository
     from .domain.species import SpeciesProfileRegistry
     from .storage import CareEventStore
+    from .timeline import Timeline
 
 
 class CareEventType(StrEnum):
@@ -78,19 +80,6 @@ class CareEvent:
 
 
 @dataclass(frozen=True, slots=True)
-class Reptile:
-    """An individual reptile tracked by ReptileCare."""
-
-    reptile_id: str
-    display_name: str
-    species: str
-    morph: str | None = None
-    hatch_date: date | None = None
-    sex: str | None = None
-    notes: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
 class ReptileCareSnapshot:
     """Lightweight coordinator state derived from the event stream."""
 
@@ -104,3 +93,9 @@ class ReptileCareRuntimeData:
     coordinator: ReptileCareCoordinator
     event_store: CareEventStore
     species_profiles: SpeciesProfileRegistry
+    reptile_repository: ReptileRepository
+
+    @property
+    def timeline(self) -> Timeline:
+        """Expose the coordinator's current Timeline."""
+        return self.coordinator.timeline

@@ -39,9 +39,16 @@ A **Reptile** represents one animal and its durable identity. Display names can
 change; identifiers must remain stable so plans, tasks, and history continue to
 refer to the same animal.
 
-The model holds descriptive profile information such as species, morph, hatch
-date, sex, and notes. It does not store derived care state such as “last fed” or
-“cleaning overdue.”
+The immutable model references one SpeciesProfile and holds keeper-owned values
+such as display name, morph, dates, sex, photo reference, notes, enclosure,
+enabled state, and overrides. It does not store derived care state such as
+“last fed” or “cleaning overdue.”
+
+`ReptileRepository` owns validation, lookup, and mutation of the reptile
+collection behind an async persistence protocol. The Home Assistant adapter
+stores reptiles in a dedicated versioned Store. Disabling is the preferred
+archive operation; removing a reptile record never cascades into immutable
+CareEvent history. See [Reptiles](REPTILES.md) for the complete boundary.
 
 ## Species profiles
 
@@ -160,6 +167,11 @@ before notifying listeners.
 The coordinator is event-driven and has no polling interval. Future Home
 Assistant entities should consume coordinator data and Timeline queries rather
 than access persistence directly.
+
+Config-entry runtime data exposes the SpeciesProfile registry, Reptile
+repository, and the coordinator's current Timeline. The repository is not owned
+by the coordinator: individual-animal persistence and event-derived projections
+have separate responsibilities and lifecycles.
 
 ## Home Assistant entities
 

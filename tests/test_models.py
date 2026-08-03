@@ -5,7 +5,8 @@ from uuid import UUID
 
 import pytest
 
-from custom_components.reptilecare.models import CareEvent, CareEventType, Reptile
+from custom_components.reptilecare.domain.reptile import Reptile
+from custom_components.reptilecare.models import CareEvent, CareEventType
 
 
 def test_event_types_are_stable() -> None:
@@ -52,13 +53,15 @@ def test_event_rejects_naive_timestamp() -> None:
         )
 
 
-def test_reptile_model() -> None:
-    """Test the lightweight reptile profile model."""
+def test_reptile_model_uses_species_profile_identity() -> None:
+    """Test the shared model import uses permanent SpeciesProfile identity."""
     pixel = Reptile(
-        reptile_id="pixel",
+        reptile_id="550e8400-e29b-41d4-a716-446655440000",
         display_name="Pixel",
-        species="Gargoyle Gecko",
+        species_profile_id="builtin:gargoyle_gecko",
+        slug="pixel",
     )
 
     assert pixel.display_name == "Pixel"
+    assert pixel.species_profile_id == "builtin:gargoyle_gecko"
     assert pixel.morph is None

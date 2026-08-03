@@ -11,9 +11,8 @@ experience is centered on CareTasks: clear actions that tell keepers what each
 reptile needs today.
 
 > [!NOTE]
-> This first release is an architectural foundation. It creates a single
-> ReptileCare config entry but does not yet expose entities or pet-management
-> features.
+> ReptileCare currently provides domain and persistence foundations. It does
+> not yet expose reptile management UI, entities, CarePlans, or CareTasks.
 
 ## Features
 
@@ -24,6 +23,8 @@ The current foundation provides:
 - An event-driven `DataUpdateCoordinator` with no periodic polling
 - Immutable event and reptile domain models
 - A versioned species-profile domain model and built-in profile registry
+- A validated multi-reptile repository with immutable keeper-owned records
+- Separate, versioned persistence for reptiles and CareEvent history
 - Versioned persistent CareEvent history backed by Home Assistant storage
 - Reusable timeline queries for chronological history and filtering
 - Downloadable diagnostics containing non-sensitive scaffold metadata
@@ -87,10 +88,10 @@ Home Assistant Store
 Future Home Assistant entities
 ```
 
-The `CareEventStore` protocol keeps persistence behind a narrow boundary, and the
-canonical `CareEventType` enum provides a stable vocabulary for future feature
-modules. No feeding schedules, care projections, or Home Assistant entities are
-implemented at this milestone.
+The `CareEventStore` and `ReptilePersistence` protocols keep persistence behind
+narrow boundaries. The canonical `CareEventType` enum provides a stable
+vocabulary for future feature modules. No feeding schedules, care projections,
+or Home Assistant entities are implemented at this milestone.
 
 The product architecture will build from Reptiles to CarePlans, then CareTasks.
 Completing a CareTask records an immutable CareEvent; Timeline and Coordinator
@@ -106,6 +107,8 @@ historical audit log, not the primary user interaction.
   boundaries for profiles, plans, tasks, outcomes, events, and workflows
 - [Species profiles](docs/SPECIES_PROFILES.md) — profile schema, validation,
   sourcing policy, and compatibility rules
+- [Reptiles](docs/REPTILES.md) — individual-animal ownership, overrides,
+  repository behavior, persistence, and archival policy
 - [UX principles](docs/UX_PRINCIPLES.md) — standards for a calm, care-first
   experience
 - [Development workflow](DEVELOPMENT.md) — GitHub Issues, milestones, labels,
