@@ -11,8 +11,9 @@ experience is centered on CareTasks: clear actions that tell keepers what each
 reptile needs today.
 
 > [!NOTE]
-> ReptileCare currently provides domain and persistence foundations. It does
-> not yet expose reptile management UI, entities, or CareTasks.
+> ReptileCare currently provides domain, persistence, and CareTask-generation
+> foundations. It does not yet expose reptile management UI, task-completion
+> services, entities, or notifications.
 
 ## Features
 
@@ -26,6 +27,8 @@ The current foundation provides:
 - A versioned task-template domain model and built-in task template registry
 - A versioned workflow-graph domain model and built-in workflow graph registry
 - A versioned care-plan domain model and persistent care plan repository
+- A persistent CareTask model, repository, due-state projection, and startup
+  generation service
 - A validated multi-reptile repository with immutable keeper-owned records
 - Separate, versioned persistence for reptiles and CareEvent history
 - Versioned persistent CareEvent history backed by Home Assistant storage
@@ -111,7 +114,12 @@ beside task templates and prepare the future `TaskWorkflowService`.
 
 Keeper-owned `CarePlan` definitions now connect one reptile to one reusable
 task template and one reusable workflow graph with descriptive schedule and
-reminder configuration, without generating CareTasks yet.
+reminder configuration.
+
+The CareTask foundation now generates bounded, persistent, idempotent task
+occurrences from enabled CarePlans during startup, while intentionally
+deferring completion, workflow execution, notifications, and Home Assistant
+services.
 
 ## Project documentation
 
@@ -128,6 +136,8 @@ reminder configuration, without generating CareTasks yet.
   definitions, graph validation, and registry behavior
 - [Care plans](docs/CARE_PLANS.md) — keeper-owned care intent, scheduling
   abstraction, persistence, and repository behavior
+- [Care tasks](docs/CARE_TASKS.md) — generated operational work, idempotency,
+  startup reconciliation, and due-state projection
 - [Reptiles](docs/REPTILES.md) — individual-animal ownership, overrides,
   repository behavior, persistence, and archival policy
 - [UX principles](docs/UX_PRINCIPLES.md) — standards for a calm, care-first

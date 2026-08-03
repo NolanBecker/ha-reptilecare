@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import logging
 
 from homeassistant.config_entries import ConfigEntry
@@ -10,14 +11,17 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryError
 
 from .care_plan_storage import HomeAssistantCarePlanPersistence
+from .care_task_storage import HomeAssistantCareTaskPersistence
 from .coordinator import ReptileCareCoordinator
 from .domain.care_plan import CarePlanError, CarePlanRepository
+from .domain.care_task import CareTaskError, CareTaskRepository
 from .domain.reptile import ReptileError, ReptileRepository
 from .domain.species import SpeciesProfileError, SpeciesProfileRegistry
 from .domain.task_template import TaskTemplateError, TaskTemplateRegistry
 from .domain.workflow import WorkflowError, WorkflowRegistry
 from .reptile_storage import HomeAssistantReptilePersistence
 from .storage import HomeAssistantCareEventStore
+from .task_generation import CareTaskGenerator, ScheduleCalculator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,6 +67,35 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
         await care_plan_repository.async_load()
     except CarePlanError as err:
         raise ConfigEntryError("Unable to load ReptileCare care plans") from err
+    care_task_repository = CareTaskRepository(
+        reptile_repository,
+        care_plan_repository,
+        task_templates,
+        workflow_graphs,
+        HomeAssistantCareTaskPersistence(hass, entry.entry_id),
+    )
+    try:
+        await care_task_repository.async_load()
+    except CareTaskError as err:
+        raise ConfigEntryError("Unable to load ReptileCare care tasks") from err
+
+    schedule_calculator = ScheduleCalculator()
+    care_task_generator = CareTaskGenerator(
+        reptile_repository,
+        care_plan_repository,
+        task_templates,
+        workflow_graphs,
+        care_task_repository,
+        schedule_calculator,
+    )
+    generation_result = await care_task_generator.async_generate(now=datetime.now(UTC))
+    if generation_result.errors:
+        for care_plan_id, message in generation_result.errors.items():
+            _LOGGER.warning(
+                "CareTask generation skipped plan %s during setup: %s",
+                care_plan_id,
+                message,
+            )
 
     store = HomeAssistantCareEventStore(hass, entry.entry_id)
     await store.async_load()
@@ -81,6 +114,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
         task_templates=task_templates,
         workflow_graphs=workflow_graphs,
         care_plan_repository=care_plan_repository,
+        care_task_repository=care_task_repository,
+        schedule_calculator=schedule_calculator,
+        care_task_generator=care_task_generator,
     )
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
 
