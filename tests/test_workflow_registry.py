@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import Never
 
 import pytest
 
@@ -121,3 +122,22 @@ def test_registry_reports_invalid_json_file(tmp_path: Path) -> None:
     invalid.write_text("not json", encoding="utf-8")
     with pytest.raises(InvalidWorkflowError, match="invalid.json"):
         WorkflowRegistry.from_files((invalid,))
+
+
+def test_registry_rejects_non_workflow_instances() -> None:
+    """Registry construction requires validated workflow models."""
+    with pytest.raises(InvalidWorkflowError, match="WorkflowGraph"):
+        WorkflowRegistry((object(),))  # type: ignore[arg-type]
+
+
+def test_registry_reports_file_read_failures() -> None:
+    """File read errors are wrapped in a domain-specific load error."""
+
+    class BrokenTraversable:
+        name = "broken.json"
+
+        def read_text(self, *, encoding: str) -> Never:
+            raise OSError("boom")
+
+    with pytest.raises(InvalidWorkflowError, match="broken.json"):
+        WorkflowRegistry.from_files((BrokenTraversable(),))

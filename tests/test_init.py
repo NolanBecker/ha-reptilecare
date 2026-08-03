@@ -131,3 +131,56 @@ async def test_invalid_builtin_workflow_graph_fails_setup(
     entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
     with pytest.raises(ConfigEntryError, match="built-in workflow graphs"):
         await async_setup_entry(hass, entry)
+
+
+async def test_reptile_repository_load_failure_fails_setup(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Reptile persistence load failures surface as config-entry errors."""
+    from custom_components.reptilecare import ReptileRepository, async_setup_entry
+    from custom_components.reptilecare.domain.reptile import ReptileError
+
+    async def _raise_reptile_error(self: ReptileRepository) -> None:
+        raise ReptileError("unable to load reptiles")
+
+    monkeypatch.setattr(ReptileRepository, "async_load", _raise_reptile_error)
+    entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
+    with pytest.raises(ConfigEntryError, match="load ReptileCare reptiles"):
+        await async_setup_entry(hass, entry)
+
+
+async def test_platform_forwarding_and_unload_paths(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Setup forwards configured platforms and unload returns platform result."""
+    from custom_components import reptilecare
+
+    entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
+    entry.add_to_hass(hass)
+
+    monkeypatch.setattr(reptilecare, "PLATFORMS", ("sensor",))
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert entry.state is ConfigEntryState.LOADED
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_reload_listener_delegates_to_config_entries(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The reload callback forwards to Home Assistant's config-entry reload."""
+    from custom_components.reptilecare import _async_reload_entry
+
+    entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
+    reloaded: list[str] = []
+
+    async def _reload(entry_id: str) -> bool:
+        reloaded.append(entry_id)
+        return True
+
+    monkeypatch.setattr(hass.config_entries, "async_reload", _reload)
+    await _async_reload_entry(hass, entry)
+    assert reloaded == [entry.entry_id]
