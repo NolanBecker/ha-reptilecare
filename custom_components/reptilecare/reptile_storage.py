@@ -15,7 +15,7 @@ from .domain.reptile import Reptile, reptile_from_dict, reptile_to_dict
 _LOGGER = logging.getLogger(__name__)
 
 REPTILE_STORAGE_VERSION = 1
-REPTILE_STORAGE_MINOR_VERSION = 1
+REPTILE_STORAGE_MINOR_VERSION = 2
 
 type StoredReptileData = dict[str, Any]
 
@@ -40,6 +40,8 @@ def migrate_reptile_storage(
 ) -> StoredReptileData:
     """Migrate persisted reptile data to the current storage schema."""
     if old_major_version == REPTILE_STORAGE_VERSION:
+        if old_minor_version < 2:
+            return _migrate_add_slug(old_data)
         return old_data
     if old_major_version == 0:
         reptiles = old_data.get("reptiles", [])
@@ -74,6 +76,20 @@ class HomeAssistantReptilePersistence:
         await self._store.async_save(
             {"reptiles": [reptile_to_dict(reptile) for reptile in reptiles]}
         )
+
+
+def _migrate_add_slug(old_data: StoredReptileData) -> StoredReptileData:
+    """Backfill the optional slug field for older reptile documents."""
+    reptiles = old_data.get("reptiles")
+    if not isinstance(reptiles, list):
+        return {"reptiles": []}
+
+    migrated: list[dict[str, Any]] = []
+    for reptile in reptiles:
+        if not isinstance(reptile, Mapping):
+            return {"reptiles": []}
+        migrated.append({"slug": None, **dict(reptile)})
+    return {"reptiles": migrated}
 
 
 def _deserialize_reptiles(

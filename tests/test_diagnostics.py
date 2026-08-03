@@ -20,7 +20,7 @@ async def test_diagnostics(hass: HomeAssistant) -> None:
 
     assert diagnostics == {
         "domain": DOMAIN,
-        "config_entry": {"version": 1, "minor_version": 1},
+        "config_entry": {"version": 1, "minor_version": 2},
         "runtime": {
             "event_count": 0,
             "reptile_count": 0,

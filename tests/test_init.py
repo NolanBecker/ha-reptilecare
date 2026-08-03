@@ -15,6 +15,8 @@ from custom_components.reptilecare.models import (
     ReptileCareSnapshot,
 )
 
+PIXEL_ID = "550e8400-e29b-41d4-a716-446655440000"
+
 
 async def test_setup_and_unload_entry(hass: HomeAssistant) -> None:
     """Test setting up and unloading ReptileCare."""
@@ -32,7 +34,7 @@ async def test_setup_and_unload_entry(hass: HomeAssistant) -> None:
     assert entry.runtime_data.species_profiles.contains("builtin:gargoyle_gecko")
     assert entry.runtime_data.reptile_repository.all() == ()
 
-    event = CareEvent(reptile_id="pixel", event_type=CareEventType.FEEDING)
+    event = CareEvent(reptile_id=PIXEL_ID, event_type=CareEventType.FEEDING)
     snapshot = ReptileCareSnapshot(events=(event,))
     entry.runtime_data.coordinator.async_handle_event(snapshot)
     assert entry.runtime_data.coordinator.timeline.latest_event() is event
@@ -49,13 +51,18 @@ async def test_reload_rebuilds_species_registry(hass: HomeAssistant) -> None:
     assert await hass.config_entries.async_setup(entry.entry_id)
     original_registry = entry.runtime_data.species_profiles
     original_repository = entry.runtime_data.reptile_repository
-    pixel = Reptile("pixel", "Pixel", "builtin:gargoyle_gecko")
+    pixel = Reptile(
+        reptile_id=PIXEL_ID,
+        display_name="Pixel",
+        species_profile_id="builtin:gargoyle_gecko",
+        slug="pixel",
+    )
     await original_repository.async_add(pixel)
     await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done()
     assert entry.runtime_data.species_profiles is not original_registry
     assert entry.runtime_data.reptile_repository is not original_repository
-    assert entry.runtime_data.reptile_repository.get("pixel") == pixel
+    assert entry.runtime_data.reptile_repository.get(PIXEL_ID) == pixel
     assert entry.runtime_data.species_profiles.contains("builtin:gargoyle_gecko")
 
 

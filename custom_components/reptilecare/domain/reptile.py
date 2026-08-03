@@ -11,11 +11,12 @@ import math
 import re
 from types import MappingProxyType
 from typing import Any, Protocol
+from uuid import UUID
 
 from .species import SpeciesProfileRegistry
 
 REPTILE_SCHEMA_VERSION = 1
-_LOCAL_ID = re.compile(r"^[a-z][a-z0-9_]*$")
+_SLUG = re.compile(r"^[a-z0-9]+(?:[-_][a-z0-9]+)*$")
 _OVERRIDE_KEY = re.compile(r"^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$")
 
 type ReptileOverrideValue = str | int | float | bool | None
@@ -39,6 +40,10 @@ class ReptileNotFoundError(ReptileError, LookupError):
 
 class UnknownSpeciesProfileError(ReptileError, LookupError):
     """Raised when a reptile references an unknown SpeciesProfile."""
+
+
+class DuplicateReptileSlugError(ReptileError):
+    """Raised when a reptile slug is already registered."""
 
 
 class ReptileSex(StrEnum):
@@ -97,6 +102,7 @@ class Reptile:
     reptile_id: str
     display_name: str
     species_profile_id: str
+    slug: str | None = None
     morph: str | None = None
     sex: ReptileSex | None = None
     hatch_date: date | None = None
@@ -109,9 +115,17 @@ class Reptile:
 
     def __post_init__(self) -> None:
         reptile_id = _text(self.reptile_id, "reptile_id")
-        if _LOCAL_ID.fullmatch(reptile_id) is None:
-            raise InvalidReptileError("reptile_id must be a lowercase identifier")
+        try:
+            UUID(reptile_id)
+        except ValueError as err:
+            raise InvalidReptileError("reptile_id must be a UUID") from err
         species_profile_id = _text(self.species_profile_id, "species_profile_id")
+        slug = _optional_text(self.slug, "slug")
+        if slug is not None and _SLUG.fullmatch(slug) is None:
+            raise InvalidReptileError(
+                "slug must contain only lowercase letters, numbers, "
+                "hyphens, or underscores"
+            )
         if self.sex is not None:
             try:
                 sex = ReptileSex(self.sex)
@@ -129,6 +143,7 @@ class Reptile:
             raise InvalidReptileError("overrides has an invalid type")
 
         object.__setattr__(self, "reptile_id", reptile_id)
+        object.__setattr__(self, "slug", slug)
         object.__setattr__(
             self, "display_name", _text(self.display_name, "display_name")
         )
@@ -170,12 +185,13 @@ class ReptileRepository:
         self._species_profiles = species_profiles
         self._persistence = persistence
         self._reptiles: Mapping[str, Reptile] = MappingProxyType({})
+        self._slugs: Mapping[str, str] = MappingProxyType({})
         self._write_lock = asyncio.Lock()
 
     async def async_load(self) -> None:
         """Load and validate all persisted reptiles."""
         reptiles = await self._persistence.async_load()
-        self._reptiles = self._validated_mapping(reptiles)
+        self._publish(reptiles)
 
     async def async_add(self, reptile: Reptile) -> None:
         """Add and persist a new reptile."""
@@ -221,6 +237,18 @@ class ReptileRepository:
         except KeyError as err:
             raise ReptileNotFoundError(f"reptile not found: {reptile_id}") from err
 
+    def contains_slug(self, slug: str) -> bool:
+        """Return whether a reptile slug is registered."""
+        return slug in self._slugs
+
+    def get_by_slug(self, slug: str) -> Reptile:
+        """Return one reptile by its optional automation slug."""
+        try:
+            reptile_id = self._slugs[slug]
+        except KeyError as err:
+            raise ReptileNotFoundError(f"reptile slug not found: {slug}") from err
+        return self._reptiles[reptile_id]
+
     def all(self, *, include_disabled: bool = True) -> tuple[Reptile, ...]:
         """List reptiles in deterministic identifier order."""
         reptiles = tuple(self._reptiles.values())
@@ -230,16 +258,21 @@ class ReptileRepository:
 
     async def _save(self, reptiles: tuple[Reptile, ...]) -> None:
         """Persist then publish a validated replacement collection."""
-        validated = self._validated_mapping(reptiles)
+        validated, _ = self._validated_state(reptiles)
         ordered = tuple(validated.values())
         await self._persistence.async_save(ordered)
-        self._reptiles = validated
+        self._publish(ordered)
 
-    def _validated_mapping(
+    def _publish(self, reptiles: tuple[Reptile, ...]) -> None:
+        """Publish validated reptile and slug indexes together."""
+        self._reptiles, self._slugs = self._validated_state(reptiles)
+
+    def _validated_state(
         self, reptiles: tuple[Reptile, ...]
-    ) -> Mapping[str, Reptile]:
-        """Validate and deterministically index a reptile collection."""
+    ) -> tuple[Mapping[str, Reptile], Mapping[str, str]]:
+        """Validate and deterministically index reptile and slug mappings."""
         indexed: dict[str, Reptile] = {}
+        slugs: dict[str, str] = {}
         for reptile in reptiles:
             if not isinstance(reptile, Reptile):
                 raise InvalidReptileError("repository values must be Reptile instances")
@@ -249,7 +282,16 @@ class ReptileRepository:
                 )
             self._validate_profile(reptile)
             indexed[reptile.reptile_id] = reptile
-        return MappingProxyType(dict(sorted(indexed.items())))
+            if reptile.slug is not None:
+                if reptile.slug in slugs:
+                    raise DuplicateReptileSlugError(
+                        f"duplicate reptile slug: {reptile.slug}"
+                    )
+                slugs[reptile.slug] = reptile.reptile_id
+        return (
+            MappingProxyType(dict(sorted(indexed.items()))),
+            MappingProxyType(dict(sorted(slugs.items()))),
+        )
 
     def _validate_profile(self, reptile: Reptile) -> None:
         """Ensure the referenced SpeciesProfile is registered."""
@@ -263,6 +305,7 @@ def reptile_to_dict(reptile: Reptile) -> dict[str, Any]:
     """Serialize a Reptile to explicit JSON-compatible values."""
     return {
         "reptile_id": reptile.reptile_id,
+        "slug": reptile.slug,
         "display_name": reptile.display_name,
         "species_profile_id": reptile.species_profile_id,
         "morph": reptile.morph,
@@ -281,6 +324,7 @@ def reptile_from_dict(value: Mapping[str, Any]) -> Reptile:
     """Deserialize and strictly validate a serialized Reptile."""
     required = {
         "reptile_id",
+        "slug",
         "display_name",
         "species_profile_id",
         "morph",
@@ -306,6 +350,7 @@ def reptile_from_dict(value: Mapping[str, Any]) -> Reptile:
         raise InvalidReptileError("overrides must be an object")
     return Reptile(
         reptile_id=value["reptile_id"],
+        slug=value["slug"],
         display_name=value["display_name"],
         species_profile_id=value["species_profile_id"],
         morph=value["morph"],

@@ -9,6 +9,7 @@ import pytest
 
 from custom_components.reptilecare.domain.reptile import (
     DuplicateReptileError,
+    DuplicateReptileSlugError,
     InvalidReptileError,
     MemoryReptilePersistence,
     Reptile,
@@ -22,14 +23,18 @@ from custom_components.reptilecare.domain.reptile import (
 )
 from custom_components.reptilecare.domain.species import SpeciesProfileRegistry
 
+PIXEL_ID = "550e8400-e29b-41d4-a716-446655440000"
+BEANS_ID = "123e4567-e89b-12d3-a456-426614174000"
+
 
 @pytest.fixture
 def pixel() -> Reptile:
     """Return the test-only Gargoyle Gecko named Pixel."""
     return Reptile(
-        reptile_id="pixel",
+        reptile_id=PIXEL_ID,
         display_name="Pixel",
         species_profile_id="builtin:gargoyle_gecko",
+        slug="pixel",
         morph="Orange blotch",
         sex=ReptileSex.FEMALE,
         hatch_date=date(2024, 5, 10),
@@ -58,6 +63,7 @@ def repository(persistence: MemoryReptilePersistence) -> ReptileRepository:
 def test_reptile_is_immutable_and_normalized(pixel: Reptile) -> None:
     """Reptile records normalize strings and remain immutable."""
     assert pixel.sex is ReptileSex.FEMALE
+    assert pixel.slug == "pixel"
     with pytest.raises(FrozenInstanceError):
         pixel.display_name = "Changed"  # type: ignore[misc]
 
@@ -73,6 +79,7 @@ def test_reptile_is_immutable_and_normalized(pixel: Reptile) -> None:
     ("change", "message"),
     [
         ({"reptile_id": "Not Valid"}, "reptile_id"),
+        ({"slug": "Pixel"}, "slug"),
         ({"display_name": " "}, "display_name"),
         ({"enabled": 1}, "enabled"),
         ({"hatch_date": "2024-01-01"}, "hatch_date"),
@@ -103,6 +110,7 @@ def test_reptile_serialization_round_trip(pixel: Reptile) -> None:
     serialized = reptile_to_dict(pixel)
     restored = reptile_from_dict(json.loads(json.dumps(serialized)))
     assert restored == pixel
+    assert restored.slug == "pixel"
     assert restored.overrides.values == pixel.overrides.values
 
 
@@ -127,17 +135,21 @@ async def test_repository_crud(
     """Repository add, lookup, list, update, and remove persist atomically."""
     await repository.async_load()
     await repository.async_add(pixel)
-    assert repository.get("pixel") is pixel
+    assert repository.get(PIXEL_ID) is pixel
+    assert repository.get_by_slug("pixel") is pixel
+    assert repository.contains_slug("pixel")
     assert repository.all() == (pixel,)
     assert persistence.reptiles == (pixel,)
 
     renamed = replace(pixel, display_name="Pixel Gecko")
     await repository.async_update(renamed)
-    assert repository.get("pixel") == renamed
+    assert repository.get(PIXEL_ID) == renamed
+    assert repository.get_by_slug("pixel") == renamed
 
-    removed = await repository.async_remove("pixel")
+    removed = await repository.async_remove(PIXEL_ID)
     assert removed == renamed
     assert repository.all() == ()
+    assert not repository.contains_slug("pixel")
     assert persistence.reptiles == ()
 
 
@@ -147,8 +159,25 @@ async def test_repository_rejects_duplicate_ids(
     """Permanent reptile identifiers remain unique."""
     await repository.async_load()
     await repository.async_add(pixel)
-    with pytest.raises(DuplicateReptileError, match="pixel"):
+    with pytest.raises(DuplicateReptileError, match=PIXEL_ID):
         await repository.async_add(pixel)
+
+
+async def test_repository_rejects_duplicate_slugs(
+    repository: ReptileRepository, pixel: Reptile
+) -> None:
+    """Automation slugs remain unique when present."""
+    await repository.async_load()
+    await repository.async_add(pixel)
+
+    beans = Reptile(
+        reptile_id=BEANS_ID,
+        display_name="Beans",
+        species_profile_id="builtin:gargoyle_gecko",
+        slug="pixel",
+    )
+    with pytest.raises(DuplicateReptileSlugError, match="pixel"):
+        await repository.async_add(beans)
 
 
 async def test_repository_rejects_unknown_species_profile(
@@ -167,11 +196,11 @@ async def test_repository_enable_disable_and_filtering(
     """Disabled reptiles are archived but remain addressable."""
     await repository.async_load()
     await repository.async_add(pixel)
-    await repository.async_disable("pixel")
-    assert not repository.get("pixel").enabled
+    await repository.async_disable(PIXEL_ID)
+    assert not repository.get(PIXEL_ID).enabled
     assert repository.all(include_disabled=False) == ()
-    await repository.async_enable("pixel")
-    assert repository.get("pixel").enabled
+    await repository.async_enable(PIXEL_ID)
+    assert repository.get(PIXEL_ID).enabled
 
 
 async def test_repository_lookup_failures(repository: ReptileRepository) -> None:
@@ -179,6 +208,9 @@ async def test_repository_lookup_failures(repository: ReptileRepository) -> None
     await repository.async_load()
     with pytest.raises(ReptileNotFoundError, match="missing"):
         repository.get("missing")
+    with pytest.raises(ReptileNotFoundError, match="missing"):
+        repository.get_by_slug("missing")
+    assert not repository.contains_slug("missing")
     with pytest.raises(ReptileNotFoundError, match="missing"):
         await repository.async_remove("missing")
 
@@ -189,8 +221,24 @@ async def test_repository_validates_loaded_collection(pixel: Reptile) -> None:
         SpeciesProfileRegistry.load_builtin_profiles(),
         MemoryReptilePersistence((pixel, pixel)),
     )
-    with pytest.raises(DuplicateReptileError, match="pixel"):
+    with pytest.raises(DuplicateReptileError, match=PIXEL_ID):
         await duplicate.async_load()
+
+
+async def test_display_name_change_does_not_affect_slug_or_uuid(
+    repository: ReptileRepository, pixel: Reptile
+) -> None:
+    """Human identity changes never rewrite machine or automation identities."""
+    await repository.async_load()
+    await repository.async_add(pixel)
+
+    renamed = replace(pixel, display_name="Sir Pixel of the Rocks")
+    await repository.async_update(renamed)
+
+    assert renamed.reptile_id == PIXEL_ID
+    assert renamed.slug == "pixel"
+    assert repository.get(PIXEL_ID).display_name == "Sir Pixel of the Rocks"
+    assert repository.get_by_slug("pixel").reptile_id == PIXEL_ID
 
 
 async def test_failed_save_does_not_publish_reptile(

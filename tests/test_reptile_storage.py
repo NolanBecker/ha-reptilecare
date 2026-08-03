@@ -18,10 +18,17 @@ from custom_components.reptilecare.reptile_storage import (
 )
 from custom_components.reptilecare.storage import HomeAssistantCareEventStore
 
+PIXEL_ID = "550e8400-e29b-41d4-a716-446655440000"
+
 
 def _pixel() -> Reptile:
     """Create the test-only sample reptile."""
-    return Reptile("pixel", "Pixel", "builtin:gargoyle_gecko")
+    return Reptile(
+        reptile_id=PIXEL_ID,
+        display_name="Pixel",
+        species_profile_id="builtin:gargoyle_gecko",
+        slug="pixel",
+    )
 
 
 def _repository(hass: HomeAssistant, entry_id: str) -> ReptileRepository:
@@ -42,7 +49,8 @@ async def test_reptile_repository_persists_across_restarts(
 
     restored = _repository(hass, "reptile-persistence")
     await restored.async_load()
-    assert restored.get("pixel") == _pixel()
+    assert restored.get(PIXEL_ID) == _pixel()
+    assert restored.get_by_slug("pixel") == _pixel()
 
 
 async def test_corrupted_reptile_storage_recovers_empty(
@@ -58,9 +66,28 @@ async def test_corrupted_reptile_storage_recovers_empty(
 
 def test_reptile_storage_migration() -> None:
     """Reptile storage has an explicit migration boundary."""
-    legacy = {"reptiles": [{"reptile_id": "pixel"}]}
+    legacy = {
+        "reptiles": [
+            {
+                "reptile_id": PIXEL_ID,
+                "display_name": "Pixel",
+                "species_profile_id": "builtin:gargoyle_gecko",
+                "morph": None,
+                "sex": None,
+                "hatch_date": None,
+                "acquired_date": None,
+                "photo_reference": None,
+                "notes": None,
+                "enabled": True,
+                "enclosure_id": None,
+                "overrides": {},
+            }
+        ]
+    }
     assert migrate_reptile_storage(0, 0, legacy) == legacy
-    assert migrate_reptile_storage(1, 0, legacy) is legacy
+    migrated = migrate_reptile_storage(1, 1, legacy)
+    assert migrated["reptiles"][0]["slug"] is None
+    assert migrate_reptile_storage(1, 2, migrated) is migrated
     assert migrate_reptile_storage(0, 0, {"reptiles": "invalid"}) == {"reptiles": []}
     with pytest.raises(ValueError, match="Unsupported"):
         migrate_reptile_storage(2, 0, legacy)
@@ -75,13 +102,13 @@ async def test_removing_reptile_preserves_care_events(hass: HomeAssistant) -> No
     await repository.async_load()
 
     event = CareEvent(
-        reptile_id="pixel",
+        reptile_id=PIXEL_ID,
         event_type=CareEventType.FEEDING,
         timestamp=datetime(2026, 1, 1, tzinfo=UTC),
     )
     await events.async_append_event(event)
     await repository.async_add(_pixel())
-    await repository.async_remove("pixel")
+    await repository.async_remove(PIXEL_ID)
 
     restored_events = HomeAssistantCareEventStore(hass, entry_id)
     await restored_events.async_load()

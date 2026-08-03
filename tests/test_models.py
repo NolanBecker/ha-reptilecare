@@ -56,9 +56,10 @@ def test_event_rejects_naive_timestamp() -> None:
 def test_reptile_model_uses_species_profile_identity() -> None:
     """Test the shared model import uses permanent SpeciesProfile identity."""
     pixel = Reptile(
-        reptile_id="pixel",
+        reptile_id="550e8400-e29b-41d4-a716-446655440000",
         display_name="Pixel",
         species_profile_id="builtin:gargoyle_gecko",
+        slug="pixel",
     )
 
     assert pixel.display_name == "Pixel"
