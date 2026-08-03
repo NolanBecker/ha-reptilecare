@@ -27,6 +27,12 @@ This is a dependency direction, not merely a screen flow. Each layer has a
 distinct responsibility and should not absorb the concerns of the layer above
 or below it.
 
+The [core domain design proposal](CORE_DOMAIN_DESIGN.md) extends these accepted
+boundaries with implementation-ready recommendations for `SpeciesProfile`,
+`TaskTemplate`, task outcomes, workflow-generated follow-ups, persistence, and
+Home Assistant adapters. It is a proposal rather than implemented runtime
+behavior.
+
 ## Reptile
 
 A **Reptile** represents one animal and its durable identity. Display names can

@@ -5,6 +5,11 @@ leave the integration useful, tested, and ready for the next layer. Scope may
 be refined through design discussion, but later phases should not bypass the
 domain boundaries established earlier.
 
+The [core domain design proposal](CORE_DOMAIN_DESIGN.md) records the proposed
+model and workflow boundaries that should be resolved before Phases 2–4 are
+implemented. Open product decisions in that proposal are not committed
+requirements until accepted.
+
 ## Committed roadmap
 
 ### Phase 1 — Foundation
