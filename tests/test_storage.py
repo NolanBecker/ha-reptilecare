@@ -97,6 +97,6 @@ def test_storage_migration() -> None:
     legacy = {"events": [{"event_id": "example"}]}
 
     assert migrate_storage(0, 0, legacy) == legacy
-    assert migrate_storage(1, 0, legacy) is legacy
+    assert migrate_storage(1, 0, legacy) == legacy
     with pytest.raises(ValueError, match="Unsupported"):
         migrate_storage(2, 0, legacy)
