@@ -265,6 +265,35 @@ async def test_platform_forwarding_and_unload_paths(
     assert unloaded == [(entry.entry_id, ("sensor",))]
 
 
+async def test_setup_falls_back_to_async_refresh_for_direct_invocation(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Direct setup calls fall back to plain refresh outside HA setup state."""
+    from custom_components.reptilecare import async_setup_entry
+    from custom_components.reptilecare.coordinator import ReptileCareCoordinator
+
+    entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
+    calls: list[str] = []
+
+    async def _first_refresh(self: ReptileCareCoordinator) -> None:
+        calls.append("first_refresh")
+        raise ConfigEntryError(
+            "`async_config_entry_first_refresh` called when config entry state is "
+            "ConfigEntryState.NOT_LOADED"
+        )
+
+    async def _refresh(self: ReptileCareCoordinator) -> None:
+        calls.append("refresh")
+
+    monkeypatch.setattr(
+        ReptileCareCoordinator, "async_config_entry_first_refresh", _first_refresh
+    )
+    monkeypatch.setattr(ReptileCareCoordinator, "async_refresh", _refresh)
+
+    assert await async_setup_entry(hass, entry)
+    assert calls == ["first_refresh", "refresh"]
+
+
 async def test_reload_listener_delegates_to_config_entries(
     hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
 ) -> None:
