@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 import logging
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryError
@@ -114,7 +114,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
         config_entry=entry,
         event_store=store,
     )
-    await coordinator.async_config_entry_first_refresh()
+    if entry.state is ConfigEntryState.SETUP_IN_PROGRESS:
+        await coordinator.async_config_entry_first_refresh()
+    else:
+        await coordinator.async_refresh()
 
     entry.runtime_data = ReptileCareRuntimeData(
         coordinator=coordinator,
