@@ -10,10 +10,17 @@ import pytest
 
 from custom_components.reptilecare.application import (
     CareEngine,
+    CareEnginePersistenceError,
+    CareTaskResolutionNotAllowedError,
     CareTaskResolutionRequest,
     ConflictingTaskResolutionError,
+    CreateTaskEffect,
     InvalidTaskContextError,
     InvalidTaskOutcomeSelectionError,
+    InvalidWorkflowEffectError,
+    MissingTaskTemplateReferenceError,
+    MissingWorkflowGraphReferenceError,
+    NoOpEffect,
     ResolutionAction,
     WorkflowEvaluator,
 )
@@ -38,8 +45,25 @@ from custom_components.reptilecare.domain.reptile import (
 )
 from custom_components.reptilecare.domain.species import SpeciesProfileRegistry
 from custom_components.reptilecare.domain.task_outcome import TaskOutcome
-from custom_components.reptilecare.domain.task_template import TaskTemplateRegistry
-from custom_components.reptilecare.domain.workflow import WorkflowRegistry
+from custom_components.reptilecare.domain.task_template import (
+    CompletionBehavior,
+    ContextFieldType,
+    TaskContextFieldDefinition,
+    TaskTemplateRegistry,
+)
+from custom_components.reptilecare.domain.workflow import (
+    WorkflowActionDefinition,
+    WorkflowActionType,
+    WorkflowDelay,
+    WorkflowDelayUnit,
+    WorkflowGraph,
+    WorkflowNode,
+    WorkflowNodeType,
+    WorkflowRegistry,
+    WorkflowTransition,
+    WorkflowTrigger,
+    WorkflowTriggerType,
+)
 from custom_components.reptilecare.storage import MemoryCareEventStore
 
 PIXEL_ID = "550e8400-e29b-41d4-a716-446655440000"
@@ -321,5 +345,438 @@ def test_reconcile_pending_operation_finishes_missing_follow_up() -> None:
         assert updated.resolution_reconciled_at is not None
         assert len(await event_store.async_list_events()) == 1
         assert len(task_repository.all()) == 2
+
+    asyncio.run(_run())
+
+
+def test_resolution_request_normalizes_and_freezes_json_payloads() -> None:
+    """Resolution requests normalize text and freeze JSON-compatible values."""
+    request = CareTaskResolutionRequest(
+        action="complete",
+        outcome_id=" ate_normally ",
+        outcome_metadata={"quantity": 2, "foods": ["papaya"]},
+        notes=" finished ",
+        attachment_references=(" photo-1 ",),
+        actor_id=" keeper-1 ",
+        source=" service ",
+        completed_at=datetime(2026, 8, 3, 12, tzinfo=UTC),
+        environmental_context={"temperatures": [78, 79]},
+    )
+
+    assert request.outcome_id == "ate_normally"
+    assert request.notes == "finished"
+    assert request.attachment_references == ("photo-1",)
+    assert request.actor_id == "keeper-1"
+    assert request.source == "service"
+    assert request.outcome_metadata["foods"] == ("papaya",)
+    assert request.environmental_context["temperatures"] == (78, 79)
+
+
+def test_resolution_request_rejects_non_json_metadata() -> None:
+    """Resolution requests reject non-JSON-compatible structured metadata."""
+    with pytest.raises(ValueError, match="JSON-compatible"):
+        CareTaskResolutionRequest(
+            action=ResolutionAction.COMPLETE,
+            outcome_metadata={"bad": object()},
+        )
+
+
+def test_resolve_missing_task_fails_clearly() -> None:
+    """Resolving a missing task surfaces a task-not-found error."""
+
+    async def _run() -> None:
+        engine, _, _ = await _build_engine()
+        with pytest.raises(CareTaskResolutionNotAllowedError, match="task not found"):
+            await engine.async_resolve_task(
+                TASK_ID,
+                CareTaskResolutionRequest(action=ResolutionAction.COMPLETE),
+            )
+
+    asyncio.run(_run())
+
+
+def test_cancel_defaults_cancelled_outcome() -> None:
+    """Cancel requests use the template's cancelled outcome automatically."""
+
+    async def _run() -> None:
+        engine, _, _ = await _build_engine(_feed_task())
+        result = await engine.async_resolve_task(
+            TASK_ID,
+            CareTaskResolutionRequest(
+                action=ResolutionAction.CANCEL,
+                completed_at=datetime(2026, 8, 3, 12, 5, tzinfo=UTC),
+            ),
+        )
+
+        assert result.task.status is CareTaskStatus.CANCELLED
+        assert result.task.outcome is not None
+        assert result.task.outcome.outcome_id == "cancelled"
+
+    asyncio.run(_run())
+
+
+def test_missing_required_context_field_fails() -> None:
+    """Required context definitions are enforced before persistence."""
+
+    async def _run() -> None:
+        engine, _, _ = await _build_engine(_feed_task())
+        definition = TaskContextFieldDefinition(
+            field_id="photo",
+            display_name="Photo",
+            field_type=ContextFieldType.PHOTO,
+            required=True,
+        )
+        template = replace(
+            engine._task_templates.get("builtin:feed_fruit"),  # type: ignore[attr-defined]
+            context_fields=(definition,),
+        )
+        task = _feed_task()
+        with pytest.raises(InvalidTaskContextError, match="missing required context"):
+            engine._normalize_request(  # type: ignore[attr-defined]
+                task,
+                template,
+                CareTaskResolutionRequest(
+                    action=ResolutionAction.COMPLETE,
+                    outcome_id="ate_normally",
+                ),
+            )
+
+    asyncio.run(_run())
+
+
+def test_context_value_validation_rejects_wrong_types() -> None:
+    """Each context field type rejects incompatible values."""
+    checks = (
+        (
+            TaskContextFieldDefinition(
+                field_id="text_field",
+                display_name="Text",
+                field_type=ContextFieldType.TEXT,
+            ),
+            12,
+            "must be text",
+        ),
+        (
+            TaskContextFieldDefinition(
+                field_id="number_field",
+                display_name="Number",
+                field_type=ContextFieldType.NUMBER,
+            ),
+            True,
+            "must be numeric",
+        ),
+        (
+            TaskContextFieldDefinition(
+                field_id="duration_field",
+                display_name="Duration",
+                field_type=ContextFieldType.DURATION,
+            ),
+            -1,
+            "non-negative duration",
+        ),
+        (
+            TaskContextFieldDefinition(
+                field_id="photo_field",
+                display_name="Photo",
+                field_type=ContextFieldType.PHOTO,
+            ),
+            5,
+            "photo reference string",
+        ),
+    )
+
+    for definition, value, message in checks:
+        with pytest.raises(InvalidTaskContextError, match=message):
+            CareEngine._validate_context_value(definition.field_id, definition, value)
+
+
+def test_workflow_evaluator_returns_noop_when_no_transition_matches() -> None:
+    """No matching transition returns a declarative no-op effect."""
+    graph = WorkflowGraph(
+        workflow_id="custom:test_graph",
+        display_name="Test Graph",
+        description="No-op",
+        version=1,
+        start_node="start",
+        nodes=(
+            WorkflowNode(node_id="start", node_type=WorkflowNodeType.START),
+            WorkflowNode(node_id="end", node_type=WorkflowNodeType.END),
+        ),
+        transitions=(
+            WorkflowTransition(
+                from_node="start",
+                to_node="end",
+                trigger=WorkflowTrigger(
+                    trigger_type=WorkflowTriggerType.OUTCOME_SELECTED,
+                    outcome_id="ate_normally",
+                ),
+            ),
+        ),
+    )
+    evaluator = WorkflowEvaluator(WorkflowRegistry((graph,)))
+    effects = evaluator.evaluate(
+        task=replace(_feed_task(), workflow_id=graph.workflow_id),
+        template=TaskTemplateRegistry.load_builtin_templates().get(
+            "builtin:feed_fruit"
+        ),
+        resolution=CareTaskResolutionRequest(
+            action=ResolutionAction.COMPLETE,
+            outcome_id="refused",
+        ),
+    )
+
+    assert len(effects) == 1
+    assert isinstance(effects[0], NoOpEffect)
+
+
+def test_workflow_evaluator_supports_create_event_effect() -> None:
+    """Create-care-event nodes produce declarative event effects."""
+    graph = WorkflowGraph(
+        workflow_id="custom:test_graph",
+        display_name="Test Graph",
+        description="Create event",
+        version=1,
+        start_node="start",
+        nodes=(
+            WorkflowNode(node_id="start", node_type=WorkflowNodeType.START),
+            WorkflowNode(
+                node_id="event_node",
+                node_type=WorkflowNodeType.ACTION,
+                action=WorkflowActionDefinition(
+                    action_type=WorkflowActionType.CREATE_CARE_EVENT,
+                    display_name="Create event",
+                    metadata={"event_type": "feeding"},
+                ),
+            ),
+            WorkflowNode(node_id="end", node_type=WorkflowNodeType.END),
+        ),
+        transitions=(
+            WorkflowTransition(
+                from_node="start",
+                to_node="event_node",
+                trigger=WorkflowTrigger(
+                    trigger_type=WorkflowTriggerType.OUTCOME_SELECTED,
+                    outcome_id="ate_normally",
+                ),
+            ),
+            WorkflowTransition(
+                from_node="event_node",
+                to_node="end",
+                trigger=WorkflowTrigger(
+                    trigger_type=WorkflowTriggerType.TASK_COMPLETED,
+                ),
+            ),
+        ),
+    )
+    evaluator = WorkflowEvaluator(WorkflowRegistry((graph,)))
+    effects = evaluator.evaluate(
+        task=replace(_feed_task(), workflow_id=graph.workflow_id),
+        template=TaskTemplateRegistry.load_builtin_templates().get(
+            "builtin:feed_fruit"
+        ),
+        resolution=CareTaskResolutionRequest(
+            action=ResolutionAction.COMPLETE,
+            outcome_id="ate_normally",
+        ),
+    )
+
+    assert len(effects) == 1
+    assert effects[0].effect_id == "event_node"
+
+
+def test_workflow_evaluator_reports_invalid_effect_definitions() -> None:
+    """Malformed workflow action metadata fails clearly."""
+    create_task_graph = WorkflowGraph(
+        workflow_id="custom:bad_task_graph",
+        display_name="Bad Task Graph",
+        description="Invalid task effect",
+        version=1,
+        start_node="start",
+        nodes=(
+            WorkflowNode(node_id="start", node_type=WorkflowNodeType.START),
+            WorkflowNode(
+                node_id="task_node",
+                node_type=WorkflowNodeType.ACTION,
+                action=WorkflowActionDefinition(
+                    action_type=WorkflowActionType.CREATE_TASK,
+                    display_name="Create task",
+                    metadata={},
+                ),
+            ),
+            WorkflowNode(node_id="end", node_type=WorkflowNodeType.END),
+        ),
+        transitions=(
+            WorkflowTransition(
+                from_node="start",
+                to_node="task_node",
+                trigger=WorkflowTrigger(
+                    trigger_type=WorkflowTriggerType.OUTCOME_SELECTED,
+                    outcome_id="ate_normally",
+                ),
+            ),
+            WorkflowTransition(
+                from_node="task_node",
+                to_node="end",
+                trigger=WorkflowTrigger(
+                    trigger_type=WorkflowTriggerType.TASK_COMPLETED,
+                ),
+            ),
+        ),
+    )
+    event_graph = WorkflowGraph(
+        workflow_id="custom:bad_event_graph",
+        display_name="Bad Event Graph",
+        description="Invalid event effect",
+        version=1,
+        start_node="start",
+        nodes=(
+            WorkflowNode(node_id="start", node_type=WorkflowNodeType.START),
+            WorkflowNode(
+                node_id="event_node",
+                node_type=WorkflowNodeType.ACTION,
+                action=WorkflowActionDefinition(
+                    action_type=WorkflowActionType.CREATE_CARE_EVENT,
+                    display_name="Create event",
+                    metadata={},
+                ),
+            ),
+            WorkflowNode(node_id="end", node_type=WorkflowNodeType.END),
+        ),
+        transitions=(
+            WorkflowTransition(
+                from_node="start",
+                to_node="event_node",
+                trigger=WorkflowTrigger(
+                    trigger_type=WorkflowTriggerType.OUTCOME_SELECTED,
+                    outcome_id="ate_normally",
+                ),
+            ),
+            WorkflowTransition(
+                from_node="event_node",
+                to_node="end",
+                trigger=WorkflowTrigger(
+                    trigger_type=WorkflowTriggerType.TASK_COMPLETED,
+                ),
+            ),
+        ),
+    )
+
+    for graph, message in (
+        (create_task_graph, "template_id"),
+        (event_graph, "event_type"),
+    ):
+        evaluator = WorkflowEvaluator(WorkflowRegistry((graph,)))
+        with pytest.raises(InvalidWorkflowEffectError, match=message):
+            evaluator.evaluate(
+                task=replace(_feed_task(), workflow_id=graph.workflow_id),
+                template=TaskTemplateRegistry.load_builtin_templates().get(
+                    "builtin:feed_fruit"
+                ),
+                resolution=CareTaskResolutionRequest(
+                    action=ResolutionAction.COMPLETE,
+                    outcome_id="ate_normally",
+                ),
+            )
+
+
+def test_workflow_evaluator_raises_for_missing_graph_reference() -> None:
+    """Missing workflow references fail through the evaluator boundary."""
+    evaluator = WorkflowEvaluator(WorkflowRegistry(()))
+    with pytest.raises(MissingWorkflowGraphReferenceError, match="missing workflow"):
+        evaluator.evaluate(
+            task=_feed_task(),
+            template=TaskTemplateRegistry.load_builtin_templates().get(
+                "builtin:feed_fruit"
+            ),
+            resolution=CareTaskResolutionRequest(
+                action=ResolutionAction.COMPLETE,
+                outcome_id="ate_normally",
+            ),
+        )
+
+
+def test_engine_static_helpers_cover_delay_and_identity_branches() -> None:
+    """Static helpers preserve deterministic identity and delay behavior."""
+    task = _feed_task()
+    effect = replace(
+        next(
+            effect
+            for effect in WorkflowEvaluator(
+                WorkflowRegistry.load_builtin_workflows()
+            ).evaluate(
+                task=_feed_task(),
+                template=TaskTemplateRegistry.load_builtin_templates().get(
+                    "builtin:feed_fruit"
+                ),
+                resolution=CareTaskResolutionRequest(
+                    action=ResolutionAction.COMPLETE,
+                    outcome_id="ate_normally",
+                ),
+            )
+            if effect.__class__.__name__ == "CreateTaskEffect"
+        ),
+        delay=WorkflowDelay(amount=2, unit=WorkflowDelayUnit.MINUTES),
+    )
+    invalid_chain_task = type(
+        "TaskLike",
+        (),
+        {
+            "task_id": task.task_id,
+            "workflow_id": task.workflow_id,
+            "generation_key": task.generation_key,
+            "workflow_chain_id": "not-a-uuid",
+        },
+    )()
+
+    assert (
+        len(
+            CareEngine._resolution_key(
+                task, CareTaskResolutionRequest(action=ResolutionAction.SKIP)
+            )
+        )
+        == 64
+    )
+    assert len(CareEngine._follow_up_generation_key(invalid_chain_task, effect)) == 64
+    assert CareEngine._apply_delay(
+        datetime(2026, 1, 31, 12, tzinfo=UTC),
+        WorkflowDelay(amount=1, unit=WorkflowDelayUnit.MONTHS),
+    ) == datetime(2026, 2, 28, 12, tzinfo=UTC)
+    assert CareEngine._apply_delay(
+        datetime(2026, 8, 3, 12, tzinfo=UTC),
+        WorkflowDelay(amount=1, unit=WorkflowDelayUnit.WEEKS),
+    ) == datetime(2026, 8, 10, 12, tzinfo=UTC)
+    assert CareEngine._apply_delay(
+        datetime(2026, 8, 3, 12, tzinfo=UTC),
+        effect.delay,
+    ) == datetime(2026, 8, 3, 12, 2, tzinfo=UTC)
+
+
+def test_engine_helper_errors_are_reported_clearly() -> None:
+    """Helper methods fail clearly for invalid template event metadata and keys."""
+    with pytest.raises(CareEnginePersistenceError, match="resolution_key"):
+        CareEngine._primary_event_id(_feed_task())
+    with pytest.raises(InvalidWorkflowEffectError, match="event_type is required"):
+        CareEngine._event_type_for_template(CompletionBehavior(metadata={}))
+
+
+def test_follow_up_missing_template_fails() -> None:
+    """Missing follow-up template references surface as application errors."""
+
+    async def _run() -> None:
+        engine, _, _ = await _build_engine(_feed_task())
+        with pytest.raises(MissingTaskTemplateReferenceError, match="missing"):
+            await engine._ensure_follow_up_task(  # type: ignore[attr-defined]
+                replace(
+                    _feed_task(),
+                    status=CareTaskStatus.COMPLETED,
+                    completed_at=datetime(2026, 8, 3, 12, tzinfo=UTC),
+                    resolution_key="follow-up-test",
+                ),
+                effect=CreateTaskEffect(
+                    effect_id="missing_task",
+                    template_id="builtin:missing",
+                    workflow_node_id="missing_task",
+                ),
+            )
 
     asyncio.run(_run())

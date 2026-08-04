@@ -218,6 +218,22 @@ async def test_care_plan_repository_load_failure_fails_setup(
         await async_setup_entry(hass, entry)
 
 
+async def test_care_task_repository_load_failure_fails_setup(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CareTask persistence load failures surface as config-entry errors."""
+    from custom_components.reptilecare import CareTaskRepository, async_setup_entry
+    from custom_components.reptilecare.domain.care_task import CareTaskError
+
+    async def _raise_care_task_error(self: CareTaskRepository) -> None:
+        raise CareTaskError("unable to load care tasks")
+
+    monkeypatch.setattr(CareTaskRepository, "async_load", _raise_care_task_error)
+    entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
+    with pytest.raises(ConfigEntryError, match="load ReptileCare care tasks"):
+        await async_setup_entry(hass, entry)
+
+
 async def test_platform_forwarding_and_unload_paths(
     hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -292,6 +308,48 @@ async def test_setup_falls_back_to_async_refresh_for_direct_invocation(
 
     assert await async_setup_entry(hass, entry)
     assert calls == ["first_refresh", "refresh"]
+
+
+async def test_setup_logs_generation_warnings(
+    hass: HomeAssistant,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Setup logs bounded generation warnings without failing startup."""
+    from custom_components.reptilecare import CareTaskGenerator, async_setup_entry
+
+    async def _generate(
+        self: CareTaskGenerator,
+        *,
+        now: datetime,
+        **_: object,
+    ) -> TaskGenerationResult:
+        return TaskGenerationResult(errors={PIXEL_ID: "missing template"})
+
+    monkeypatch.setattr(CareTaskGenerator, "async_generate", _generate)
+
+    entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
+    assert await async_setup_entry(hass, entry)
+    assert "CareTask generation skipped plan" in caplog.text
+
+
+async def test_setup_reraises_unexpected_first_refresh_error(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Non-state refresh failures are not swallowed by the direct-call fallback."""
+    from custom_components.reptilecare import async_setup_entry
+    from custom_components.reptilecare.coordinator import ReptileCareCoordinator
+
+    async def _first_refresh(self: ReptileCareCoordinator) -> None:
+        raise ConfigEntryError("coordinator exploded unexpectedly")
+
+    monkeypatch.setattr(
+        ReptileCareCoordinator, "async_config_entry_first_refresh", _first_refresh
+    )
+
+    entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
+    with pytest.raises(ConfigEntryError, match="unexpectedly"):
+        await async_setup_entry(hass, entry)
 
 
 async def test_reload_listener_delegates_to_config_entries(

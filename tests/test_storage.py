@@ -9,6 +9,10 @@ import pytest
 from custom_components.reptilecare.models import CareEvent, CareEventType
 from custom_components.reptilecare.storage import (
     HomeAssistantCareEventStore,
+    MemoryCareEventStore,
+    _deserialize_event,
+    _deserialize_events,
+    _json_value,
     migrate_storage,
 )
 
@@ -100,3 +104,82 @@ def test_storage_migration() -> None:
     assert migrate_storage(1, 0, legacy) == legacy
     with pytest.raises(ValueError, match="Unsupported"):
         migrate_storage(2, 0, legacy)
+
+
+def test_deserialize_event_validates_payload_shapes() -> None:
+    """Deserializer rejects malformed event object fields clearly."""
+    with pytest.raises(ValueError, match="stored event must be an object"):
+        _deserialize_event("bad")
+    with pytest.raises(ValueError, match="event metadata must be an object"):
+        _deserialize_event(
+            {
+                "event_id": str(_event(1).event_id),
+                "reptile_id": "pixel",
+                "timestamp": BASE_TIME.isoformat(),
+                "event_type": "feeding",
+                "metadata": [],
+            }
+        )
+    with pytest.raises(
+        ValueError, match="event attachment_references must be an array"
+    ):
+        _deserialize_event(
+            {
+                "event_id": str(_event(1).event_id),
+                "reptile_id": "pixel",
+                "timestamp": BASE_TIME.isoformat(),
+                "event_type": "feeding",
+                "metadata": {},
+                "attachment_references": "bad",
+            }
+        )
+
+
+def test_deserialize_events_rejects_duplicate_ids() -> None:
+    """Stored collections must not contain duplicate event identifiers."""
+    event = _event(1)
+    payload = {
+        "events": [
+            {
+                "event_id": str(event.event_id),
+                "reptile_id": event.reptile_id,
+                "timestamp": event.timestamp.isoformat(),
+                "event_type": event.event_type.value,
+                "metadata": {},
+            },
+            {
+                "event_id": str(event.event_id),
+                "reptile_id": event.reptile_id,
+                "timestamp": event.timestamp.isoformat(),
+                "event_type": event.event_type.value,
+                "metadata": {},
+            },
+        ]
+    }
+
+    with pytest.raises(ValueError, match="duplicate event ids"):
+        _deserialize_events(payload)
+
+
+def test_storage_json_value_converts_immutable_containers() -> None:
+    """Storage JSON conversion expands immutable containers back to JSON values."""
+    assert _json_value({"items": ("cricket",), "flags": frozenset({1, 2})}) == {
+        "items": ["cricket"],
+        "flags": [1, 2],
+    }
+
+
+async def test_memory_store_filters_lists_and_detects_duplicates() -> None:
+    """In-memory event storage mirrors the persisted store contract."""
+    first = _event(1)
+    second = _event(2, "echo")
+    store = MemoryCareEventStore((first,))
+
+    assert await store.async_get_event(first.event_id) == first
+    assert await store.async_get_event(second.event_id) is None
+    assert await store.async_list_events(reptile_id="pixel") == (first,)
+
+    await store.async_append_event(second)
+    assert await store.async_list_events() == (first, second)
+    with pytest.raises(ValueError, match="Duplicate event id"):
+        await store.async_append_event(first)
