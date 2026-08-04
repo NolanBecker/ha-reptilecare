@@ -62,7 +62,9 @@
     "supports_follow_up_task": true,
     "supports_workflow": true,
     "workflow_graph_id": "builtin:feeding_cycle",
-    "metadata": {}
+    "metadata": {
+      "event_type": "feeding"
+    }
   },
   "metadata": {
     "audience": "core"

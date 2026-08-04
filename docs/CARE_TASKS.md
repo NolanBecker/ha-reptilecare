@@ -10,14 +10,16 @@ Care Tasks sit between intent and history:
 
 - `CarePlan` expresses what should happen
 - `CareTask` expresses the concrete work that now exists
-- `CareEvent` will later record what actually happened
+- `CareEngine` resolves terminal work
+- `CareEvent` records what actually happened
 
-This branch introduces the first CareTask foundation: persistent task records,
-bounded deterministic generation, startup reconciliation, and derived due-state
-projection.
+This branch now includes persistent task records, bounded deterministic
+generation, derived due-state projection, terminal task resolution through
+`CareEngine`, immutable CareEvent creation, reusable workflow evaluation, and
+deterministic follow-up task creation.
 
-It does not yet implement task completion, workflow execution, follow-up task
-creation, entities, notifications, or Home Assistant services.
+It still does not add Home Assistant services, entities, notifications, or UI
+for task resolution.
 
 ## Current flow
 
@@ -27,12 +29,16 @@ flowchart LR
     Schedule[ScheduleCalculator]
     Generator[CareTaskGenerator]
     Repo[CareTaskRepository]
+    Engine[CareEngine]
     Projection[Derived due-state projection]
+    Events[CareEventStore]
 
     Plan --> Schedule
     Schedule --> Generator
     Generator --> Repo
     Repo --> Projection
+    Repo --> Engine
+    Engine --> Events
 ```
 
 ## CarePlan versus CareTask
@@ -95,8 +101,15 @@ The current `CareTask` model includes:
 - `generated_by`: source descriptor for why this task exists
 - `parent_task_id`: reserved for future follow-up chains
 - `workflow_chain_id`: deterministic workflow-chain identifier
+- `workflow_node_id`: current reusable workflow resume point
 - `snoozed_until`: optional future visibility delay
 - `assigned_user_id`: optional future user assignment
+- `resolution_action`: persisted terminal action for engine replay
+- `resolution_actor_id`: optional keeper/system actor identifier
+- `resolution_source`: service, UI, automation, or import source
+- `environmental_context`: plain JSON-compatible captured context
+- `resolution_key`: deterministic terminal-resolution idempotency key
+- `resolution_reconciled_at`: marker that all follow-up work exists
 - `generation_key`: deterministic idempotency key
 - `generation_reason`: typed reason the task exists
 - `schema_version`: explicit serialization version
@@ -237,17 +250,19 @@ CareTask validation is intentionally strict:
 - referenced reptiles, plans, templates, and workflows must exist
 - serialized documents must match the current schema exactly
 
-## Why completion is deferred
+## Completion boundary
 
-Task completion is intentionally outside this branch because it adds separate
-concerns:
+Task completion now belongs to `CareEngine`, not to the generator, coordinator,
+or domain records themselves.
+
+`CareTaskGenerator` remains responsible only for recurring plan generation.
+`CareEngine` now owns:
 
 - terminal transition semantics
 - outcome validation
 - immutable `CareEvent` creation
-- workflow-graph execution
+- workflow-graph effect application
 - follow-up task creation
 - restart-safe multi-record reconciliation
 
-Those behaviors belong to a future `TaskWorkflowService`, not to this initial
-generation foundation.
+See [Care engine](CARE_ENGINE.md) for the execution lifecycle.

@@ -10,6 +10,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryError
 
+from .application import CareEngine, WorkflowEvaluator
 from .care_plan_storage import HomeAssistantCarePlanPersistence
 from .care_task_storage import HomeAssistantCareTaskPersistence
 from .coordinator import ReptileCareCoordinator
@@ -80,6 +81,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
         raise ConfigEntryError("Unable to load ReptileCare care tasks") from err
 
     schedule_calculator = ScheduleCalculator()
+    store = HomeAssistantCareEventStore(hass, entry.entry_id)
+    await store.async_load()
+    workflow_evaluator = WorkflowEvaluator(workflow_graphs)
+    care_engine = CareEngine(
+        care_task_repository,
+        task_templates,
+        workflow_graphs,
+        store,
+        workflow_evaluator,
+    )
+    await care_engine.async_reconcile_pending_operations()
     care_task_generator = CareTaskGenerator(
         reptile_repository,
         care_plan_repository,
@@ -97,8 +109,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
                 message,
             )
 
-    store = HomeAssistantCareEventStore(hass, entry.entry_id)
-    await store.async_load()
     coordinator = ReptileCareCoordinator(
         hass=hass,
         config_entry=entry,
@@ -117,6 +127,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
         care_task_repository=care_task_repository,
         schedule_calculator=schedule_calculator,
         care_task_generator=care_task_generator,
+        workflow_evaluator=workflow_evaluator,
+        care_engine=care_engine,
     )
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
 

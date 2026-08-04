@@ -44,6 +44,11 @@ def test_builtin_registry_loads_feed_fruit() -> None:
         "notes",
     ]
     assert template.completion_behavior.workflow_graph_id == "builtin:feeding_cycle"
+    assert template.completion_behavior.metadata["event_type"] == "feeding"
+    assert (
+        registry.get("builtin:remove_food").completion_behavior.metadata["event_type"]
+        == "food_removed"
+    )
 
 
 def test_registry_lookup_and_ordering() -> None:

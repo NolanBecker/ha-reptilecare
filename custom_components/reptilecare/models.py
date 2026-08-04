@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 if TYPE_CHECKING:
+    from .application.care_engine import CareEngine, WorkflowEvaluator
     from .coordinator import ReptileCareCoordinator
     from .domain.care_plan import CarePlanRepository
     from .domain.care_task import CareTaskRepository
@@ -69,6 +70,16 @@ class CareEvent:
     reptile_id: str
     event_type: CareEventType
     timestamp: datetime = field(default_factory=_utc_now)
+    task_id: str | None = None
+    care_plan_id: str | None = None
+    outcome_id: str | None = None
+    context: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}))
+    actor_id: str | None = None
+    source: str | None = None
+    environmental_snapshot: Mapping[str, Any] = field(
+        default_factory=lambda: MappingProxyType({})
+    )
+    attachment_references: tuple[str, ...] = ()
     metadata: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}))
     event_id: UUID = field(default_factory=uuid4)
 
@@ -78,9 +89,52 @@ class CareEvent:
             raise ValueError("reptile_id must not be empty")
         if self.timestamp.tzinfo is None or self.timestamp.utcoffset() is None:
             raise ValueError("timestamp must be timezone-aware")
+        for name in ("task_id", "care_plan_id", "outcome_id", "actor_id", "source"):
+            value = getattr(self, name)
+            if value is not None and not value.strip():
+                raise ValueError(f"{name} must not be empty when provided")
+        context = _freeze_value(self.context)
+        if not isinstance(context, Mapping):
+            raise ValueError("context must be an object")
+        environmental_snapshot = _freeze_value(self.environmental_snapshot)
+        if not isinstance(environmental_snapshot, Mapping):
+            raise ValueError("environmental_snapshot must be an object")
+        attachment_references = tuple(
+            value.strip()
+            for value in self.attachment_references
+            if isinstance(value, str) and value.strip()
+        )
+        if len(attachment_references) != len(self.attachment_references):
+            raise ValueError("attachment_references must contain non-empty strings")
 
         object.__setattr__(self, "reptile_id", self.reptile_id.strip())
         object.__setattr__(self, "timestamp", self.timestamp.astimezone(UTC))
+        object.__setattr__(
+            self, "task_id", None if self.task_id is None else self.task_id.strip()
+        )
+        object.__setattr__(
+            self,
+            "care_plan_id",
+            None if self.care_plan_id is None else self.care_plan_id.strip(),
+        )
+        object.__setattr__(
+            self,
+            "outcome_id",
+            None if self.outcome_id is None else self.outcome_id.strip(),
+        )
+        object.__setattr__(self, "context", context)
+        object.__setattr__(
+            self,
+            "actor_id",
+            None if self.actor_id is None else self.actor_id.strip(),
+        )
+        object.__setattr__(
+            self,
+            "source",
+            None if self.source is None else self.source.strip(),
+        )
+        object.__setattr__(self, "environmental_snapshot", environmental_snapshot)
+        object.__setattr__(self, "attachment_references", attachment_references)
         object.__setattr__(self, "metadata", _immutable_metadata(self.metadata))
 
 
@@ -105,6 +159,8 @@ class ReptileCareRuntimeData:
     care_task_repository: CareTaskRepository
     schedule_calculator: ScheduleCalculator
     care_task_generator: CareTaskGenerator
+    workflow_evaluator: WorkflowEvaluator
+    care_engine: CareEngine
 
     @property
     def timeline(self) -> Timeline:

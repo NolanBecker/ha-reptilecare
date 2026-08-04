@@ -1,0 +1,66 @@
+{
+  "template_id": "builtin:remove_food",
+  "display_name": "Remove Food",
+  "description": "Remove leftover food after the feeding access window closes.",
+  "category": "maintenance",
+  "icon": "mdi:food-off",
+  "expected_outcomes": [
+    {
+      "outcome_id": "completed",
+      "display_name": "Completed",
+      "description": "Food was removed from the enclosure."
+    },
+    {
+      "outcome_id": "partially_completed",
+      "display_name": "Partially Completed",
+      "description": "Some cleanup was completed, but additional food remained."
+    },
+    {
+      "outcome_id": "nothing_to_clean",
+      "display_name": "Nothing To Clean",
+      "description": "No leftover food remained to remove."
+    },
+    {
+      "outcome_id": "skipped",
+      "display_name": "Skipped",
+      "description": "The cleanup was intentionally skipped."
+    },
+    {
+      "outcome_id": "cancelled",
+      "display_name": "Cancelled",
+      "description": "The cleanup was cancelled before completion."
+    }
+  ],
+  "context_fields": [
+    {
+      "field_id": "remaining_food",
+      "display_name": "Remaining Food",
+      "field_type": "text",
+      "required": false,
+      "metadata": {}
+    },
+    {
+      "field_id": "notes",
+      "display_name": "Notes",
+      "field_type": "text",
+      "required": false,
+      "metadata": {}
+    }
+  ],
+  "default_priority": "normal",
+  "estimated_duration": 5,
+  "completion_behavior": {
+    "create_care_event": true,
+    "supports_follow_up_task": true,
+    "supports_workflow": true,
+    "workflow_graph_id": "builtin:feeding_cycle",
+    "metadata": {
+      "event_type": "food_removed"
+    }
+  },
+  "metadata": {
+    "audience": "core"
+  },
+  "schema_version": 1,
+  "template_version": 1
+}

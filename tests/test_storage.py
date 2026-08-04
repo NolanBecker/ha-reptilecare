@@ -21,6 +21,14 @@ def _event(hour: int, reptile_id: str = "pixel") -> CareEvent:
         reptile_id=reptile_id,
         event_type=CareEventType.FEEDING,
         timestamp=BASE_TIME + timedelta(hours=hour),
+        task_id="223e4567-e89b-12d3-a456-426614174000",
+        care_plan_id="123e4567-e89b-12d3-a456-426614174000",
+        outcome_id="ate_normally",
+        context={"food_used": "papaya"},
+        actor_id="keeper-1",
+        source="service",
+        environmental_snapshot={"temperature_f": 78},
+        attachment_references=("photo-1",),
         metadata={"amount": 2, "items": ["cricket"]},
     )
 
@@ -42,7 +50,10 @@ async def test_store_saves_loads_orders_and_filters(hass: HomeAssistant) -> None
 
     assert await restored.async_list_events() == (earlier, later, other)
     assert await restored.async_list_events(reptile_id="pixel") == (earlier, later)
+    assert await restored.async_get_event(earlier.event_id) == earlier
     assert restored._events[0].metadata["items"] == ("cricket",)
+    assert restored._events[0].context["food_used"] == "papaya"
+    assert restored._events[0].environmental_snapshot["temperature_f"] == 78
 
 
 async def test_store_rejects_duplicate_event_id(hass: HomeAssistant) -> None:

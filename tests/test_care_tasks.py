@@ -214,9 +214,21 @@ def test_care_task_deserialization_rejects_invalid_documents() -> None:
         care_task_from_dict(serialized)
 
     serialized = care_task_to_dict(_task())
-    serialized["schema_version"] = 2
+    serialized["schema_version"] = 3
     with pytest.raises(InvalidCareTaskError, match="unsupported schema"):
         care_task_from_dict(serialized)
+
+    serialized = care_task_to_dict(_task())
+    serialized.pop("workflow_node_id")
+    serialized.pop("resolution_action")
+    serialized.pop("resolution_actor_id")
+    serialized.pop("resolution_source")
+    serialized.pop("environmental_context")
+    serialized.pop("resolution_key")
+    serialized.pop("resolution_reconciled_at")
+    serialized["schema_version"] = 1
+    restored = care_task_from_dict(serialized)
+    assert restored.task_id == TASK_ID
 
     serialized = care_task_to_dict(_task())
     serialized["created_at"] = "not-a-datetime"

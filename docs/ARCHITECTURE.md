@@ -10,10 +10,10 @@ presents the result.
 ```text
 SpeciesProfile --> Reptile ----+
                                |
-TaskTemplate ----------------> CarePlans --> CareTasks --> CareEvents
+TaskTemplate ----------------> CarePlans --> CareTasks --> CareEngine --> CareEvents
         |                           ^
         v                           |
- WorkflowGraphs --> future TaskWorkflowService
+ WorkflowGraphs --------------------+
                                ↓
                              Timeline
                                ↓
@@ -29,9 +29,8 @@ or below it.
 The [core domain design proposal](CORE_DOMAIN_DESIGN.md) extends these accepted
 boundaries with implementation-ready recommendations for `SpeciesProfile`,
 `TaskTemplate`, task outcomes, workflow-generated follow-ups, persistence, and
-Home Assistant adapters. Some of its CareTask recommendations are now
-implemented through persistent task generation, but completion and workflow
-execution remain future behavior.
+Home Assistant adapters. The current implementation now covers persistent task
+generation plus the first end-to-end CareEngine execution loop.
 
 ## Reptile
 
@@ -103,9 +102,10 @@ A **WorkflowGraph** is an immutable reusable behavior definition. It answers
 what should happen after a task reaches a given outcome, such as recording a
 CareEvent, waiting for a delay, or describing a follow-up task creation step.
 
-Workflow Graphs do not execute behavior. They contain node, transition,
-trigger, delay, and descriptive action definitions only. A future
-`TaskWorkflowService` will interpret them later.
+Workflow Graphs do not execute behavior on their own. They contain node,
+transition, trigger, delay, and descriptive action definitions only. The
+current `WorkflowEvaluator` interprets them as pure effects, and `CareEngine`
+applies those effects.
 
 Built-in JSON workflow graphs are loaded through `WorkflowRegistry` during
 config-entry setup and exposed in runtime data beside the species and template
@@ -152,9 +152,13 @@ The current branch implements:
 - deterministic `generation_key` idempotency
 - bounded startup generation and reconciliation
 - derived due-state projection
+- deterministic terminal resolution through `CareEngine`
+- immutable primary `CareEvent` creation
+- pure workflow evaluation
+- deterministic follow-up task creation
 
-It does not yet implement completion, services, notifications, entities, or
-workflow-graph execution. See [Care tasks](CARE_TASKS.md) for the full
+Home Assistant services, notifications, and entities remain future adapters.
+See [Care tasks](CARE_TASKS.md) and [Care engine](CARE_ENGINE.md) for the full
 boundary.
 
 ## CareEvents
@@ -186,14 +190,14 @@ until editing workflows are designed.
 
 ## CareEventStore
 
-The `CareEventStore` protocol is the persistence boundary. Runtime code depends on
-the protocol rather than Home Assistant’s storage implementation.
+The `CareEventStore` protocol is the persistence boundary. Runtime code depends
+on the protocol rather than Home Assistant’s storage implementation.
 
-The current `HomeAssistantCareEventStore` uses Home Assistant’s versioned `Store`
-helper. It loads automatically during config-entry setup and saves after each
-successful append. It provides deterministic ordering, duplicate UUID
-protection, serialized writes, migration hooks, and graceful recovery from
-malformed data.
+The current `HomeAssistantCareEventStore` uses Home Assistant’s versioned
+`Store` helper. It loads automatically during config-entry setup and saves
+after each successful append. It provides deterministic ordering, duplicate
+UUID protection, serialized writes, migration hooks, and graceful recovery
+from malformed data.
 
 Storage records use JSON-compatible values. Deserialization reconstructs typed
 domain objects before history reaches the Timeline.
@@ -226,10 +230,11 @@ than access persistence directly.
 
 Config-entry runtime data exposes the SpeciesProfile registry, TaskTemplate
 registry, WorkflowGraph registry, Reptile repository, CarePlan repository,
-CareTask repository, schedule calculator, task generator, and the
-coordinator's current Timeline. The repositories are not owned by the
-coordinator: keeper-owned persistence, generated operational work, and
-event-derived projections have separate responsibilities and lifecycles.
+CareTask repository, schedule calculator, task generator, WorkflowEvaluator,
+CareEngine, and the coordinator's current Timeline. The repositories are not
+owned by the coordinator: keeper-owned persistence, generated operational
+work, execution orchestration, and event-derived projections have separate
+responsibilities and lifecycles.
 
 ## Home Assistant entities
 
@@ -261,7 +266,9 @@ from authoritative history.
 - Entities and services must not write storage records directly.
 - TaskTemplates define reusable action vocabulary; they must not hold runtime state.
 - WorkflowGraphs define reusable behavior vocabulary; they must not execute
-  runtime state changes.
+  runtime state changes themselves.
+- WorkflowEvaluator is pure; it must not persist or call Home Assistant.
+- CareEngine orchestrates execution; it must not hardcode task-type behavior.
 - CarePlans define intent; they do not represent completion.
 - CarePlans may reference schedules and reminders; they must not execute either one.
 - CareTasks represent actionable work; they are not the audit log.

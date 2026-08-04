@@ -32,6 +32,7 @@ from .care_task import (
     CareTaskNotFoundError,
     CareTaskPersistence,
     CareTaskRepository,
+    CareTaskResolutionAction,
     CareTaskStatus,
     DuplicateCareTaskError,
     DuplicateGenerationKeyError,
@@ -74,6 +75,12 @@ from .species import (
     SpeciesProfileRegistry,
     species_profile_from_dict,
     species_profile_to_dict,
+)
+from .task_outcome import (
+    InvalidTaskOutcomeError,
+    TaskOutcome,
+    task_outcome_from_dict,
+    task_outcome_to_dict,
 )
 from .task_template import (
     CompletionBehavior,
@@ -127,6 +134,7 @@ __all__ = [
     "CareTaskNotFoundError",
     "CareTaskPersistence",
     "CareTaskRepository",
+    "CareTaskResolutionAction",
     "CareTaskStatus",
     "CarePlanScheduleType",
     "CarePlanScheduleUnit",
@@ -147,6 +155,7 @@ __all__ = [
     "InvalidCarePlanError",
     "InvalidCareTaskError",
     "InvalidTaskTemplateError",
+    "InvalidTaskOutcomeError",
     "InvalidWorkflowError",
     "IntervalSchedule",
     "MemoryCarePlanPersistence",
@@ -177,6 +186,7 @@ __all__ = [
     "TaskTemplateError",
     "TaskTemplateNotFoundError",
     "TaskTemplateRegistry",
+    "TaskOutcome",
     "UnknownReptileError",
     "UnknownCarePlanReferenceError",
     "UnknownSpeciesProfileError",
@@ -210,6 +220,8 @@ __all__ = [
     "species_profile_to_dict",
     "task_template_from_dict",
     "task_template_to_dict",
+    "task_outcome_from_dict",
+    "task_outcome_to_dict",
     "workflow_graph_from_dict",
     "workflow_graph_to_dict",
 ]
