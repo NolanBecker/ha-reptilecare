@@ -161,7 +161,7 @@ class CareTaskResolutionRequest:
     attachment_references: tuple[str, ...] = ()
     actor_id: str | None = None
     source: str | None = None
-    completed_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    completed_at: datetime | None = field(default_factory=lambda: datetime.now(UTC))
     environmental_context: Mapping[str, Any] = field(
         default_factory=lambda: MappingProxyType({})
     )
@@ -187,8 +187,11 @@ class CareTaskResolutionRequest:
         )
         object.__setattr__(self, "actor_id", _optional_text(self.actor_id, "actor_id"))
         object.__setattr__(self, "source", _optional_text(self.source, "source"))
+        completed_at = (
+            self.completed_at if self.completed_at is not None else datetime.now(UTC)
+        )
         object.__setattr__(
-            self, "completed_at", _aware_utc(self.completed_at, "completed_at")
+            self, "completed_at", _aware_utc(completed_at, "completed_at")
         )
         object.__setattr__(
             self,

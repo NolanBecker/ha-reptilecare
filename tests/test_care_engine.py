@@ -259,6 +259,15 @@ def test_invalid_outcome_and_context_fail_clearly() -> None:
     asyncio.run(_run())
 
 
+def test_resolution_request_defaults_completed_at_when_omitted() -> None:
+    """Resolution requests may omit completed_at and still normalize to UTC."""
+
+    request = CareTaskResolutionRequest(action=ResolutionAction.SKIP, completed_at=None)
+
+    assert isinstance(request.completed_at, datetime)
+    assert request.completed_at.tzinfo is UTC
+
+
 def test_skip_path_creates_event_without_follow_up() -> None:
     """Skipping Feed Fruit creates one event and follows the graph end path only."""
 
