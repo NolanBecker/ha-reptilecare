@@ -52,16 +52,18 @@ class ReptilePendingTasksSensor(ReptileCareEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         projection = self._runtime.entity_projection.project_reptile(self._reptile_id)
         pending = projection.pending_tasks
-        return {
-            "next_due": None
-            if pending.next_due is None
-            else pending.next_due.isoformat(),
-            "due_count": pending.due_count,
-            "overdue_count": pending.overdue_count,
-            "upcoming_count": pending.upcoming_count,
-            "snoozed_count": pending.snoozed_count,
-            "task_ids": list(pending.task_ids),
-        }
+        return self._merge_identity_attributes(
+            {
+                "next_due": None
+                if pending.next_due is None
+                else pending.next_due.isoformat(),
+                "due_count": pending.due_count,
+                "overdue_count": pending.overdue_count,
+                "upcoming_count": pending.upcoming_count,
+                "snoozed_count": pending.snoozed_count,
+                "task_ids": list(pending.task_ids),
+            }
+        )
 
 
 class ReptileNextTaskSensor(ReptileCareEntity, SensorEntity):
@@ -87,16 +89,18 @@ class ReptileNextTaskSensor(ReptileCareEntity, SensorEntity):
             self._reptile_id
         ).next_task
         if next_task is None:
-            return {}
-        return {
-            "task_id": next_task.task_id,
-            "task_template_id": next_task.task_template_id,
-            "care_plan_id": next_task.care_plan_id,
-            "due_at": next_task.due_at.isoformat(),
-            "timing_state": next_task.timing_state.value,
-            "priority": next_task.priority.value,
-            "generation_reason": next_task.generation_reason,
-        }
+            return self._merge_identity_attributes({})
+        return self._merge_identity_attributes(
+            {
+                "task_id": next_task.task_id,
+                "task_template_id": next_task.task_template_id,
+                "care_plan_id": next_task.care_plan_id,
+                "due_at": next_task.due_at.isoformat(),
+                "timing_state": next_task.timing_state.value,
+                "priority": next_task.priority.value,
+                "generation_reason": next_task.generation_reason,
+            }
+        )
 
 
 class ReptileLastEventSensor(ReptileCareEntity, SensorEntity):
@@ -122,13 +126,15 @@ class ReptileLastEventSensor(ReptileCareEntity, SensorEntity):
             self._reptile_id
         ).last_event
         if last_event is None:
-            return {}
-        return {
-            "event_id": last_event.event_id,
-            "event_type": last_event.event_type,
-            "timestamp": last_event.timestamp.isoformat(),
-            "outcome_id": last_event.outcome_id,
-            "task_id": last_event.task_id,
-            "care_plan_id": last_event.care_plan_id,
-            "source": last_event.source,
-        }
+            return self._merge_identity_attributes({})
+        return self._merge_identity_attributes(
+            {
+                "event_id": last_event.event_id,
+                "event_type": last_event.event_type,
+                "timestamp": last_event.timestamp.isoformat(),
+                "outcome_id": last_event.outcome_id,
+                "task_id": last_event.task_id,
+                "care_plan_id": last_event.care_plan_id,
+                "source": last_event.source,
+            }
+        )

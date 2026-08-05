@@ -38,16 +38,18 @@ class _ReptileCareBinarySensor(ReptileCareEntity, BinarySensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         projection = self._runtime.entity_projection.project_reptile(self._reptile_id)
         pending = projection.pending_tasks
-        return {
-            "pending_count": pending.pending_count,
-            "due_count": pending.due_count,
-            "overdue_count": pending.overdue_count,
-            "upcoming_count": pending.upcoming_count,
-            "snoozed_count": pending.snoozed_count,
-            "next_due": None
-            if pending.next_due is None
-            else pending.next_due.isoformat(),
-        }
+        return self._merge_identity_attributes(
+            {
+                "pending_count": pending.pending_count,
+                "due_count": pending.due_count,
+                "overdue_count": pending.overdue_count,
+                "upcoming_count": pending.upcoming_count,
+                "snoozed_count": pending.snoozed_count,
+                "next_due": None
+                if pending.next_due is None
+                else pending.next_due.isoformat(),
+            }
+        )
 
 
 class ReptileCareDueBinarySensor(_ReptileCareBinarySensor):

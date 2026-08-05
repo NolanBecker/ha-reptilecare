@@ -206,13 +206,23 @@ async def test_entity_states_update_from_services_and_button(
     assert hass.states.get(overdue_entity_id).state == STATE_ON
     assert hass.states.get(pending_binary_entity_id).state == STATE_ON
     assert hass.states.get(pending_entity_id).attributes["task_ids"]
+    assert hass.states.get(pending_entity_id).attributes["reptile_id"] == reptile_id
+    assert hass.states.get(pending_entity_id).attributes["slug"] == "pixel"
+    assert hass.states.get(next_entity_id).attributes["slug"] == "pixel"
 
     tasks = await _call_service(
         hass,
         "get_tasks",
-        {"slug": "pixel", "care_plan_id": plan["care_plan_id"]},
+        {
+            "slug": "pixel",
+            "care_plan_id": plan["care_plan_id"],
+            "include_details": True,
+        },
     )
     task_id = tasks["tasks"][0]["task_id"]
+    assert tasks["tasks"][0]["presentation"]["title"] == "Feed Fruit Mix"
+    assert tasks["tasks"][0]["presentation"]["icon"] == "mdi:food-apple"
+    assert tasks["tasks"][0]["completion_schema"]["outcomes"][0]["outcome_id"]
 
     await _call_service(
         hass,

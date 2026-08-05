@@ -121,11 +121,13 @@ The first entity milestone is now also complete:
 - dynamic entity discovery for reptiles created through services
 - recorder-friendly bounded attributes instead of one entity per task
 
-The first dashboard milestone is now also documentation- and example-driven:
+The first dashboard milestone is now documentation-, example-, and
+frontend-foundation-driven:
 
 - reusable built-in Lovelace YAML examples
 - dashboard guidance for existing reptile dashboards
-- no custom JavaScript card yet
+- a bundled Today's Care custom Lovelace card
+- reusable frontend modules for future cards and dialogs
 
 ### Phase 6 — Dashboard Cards
 
@@ -138,6 +140,14 @@ dashboards.
 - Mobile-first layouts and accessible interactions
 - Reusable cards that can be placed on any Home Assistant dashboard
 - A future ReptileCare Center for advanced workflows
+
+Phase 6 has now begun with the first production frontend foundation:
+
+- bundled static frontend modules served by the integration
+- a Today's Care card backed by the public Home Assistant service layer
+- dynamic outcome rendering from `TaskTemplate` definitions
+- quick actions for simple outcome sets
+- a reusable task completion dialog path for richer templates
 
 ### Phase 7 — Notifications
 

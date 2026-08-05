@@ -373,6 +373,9 @@ get_tasks:
     include_terminal:
       selector:
         boolean:
+    include_details:
+      selector:
+        boolean:
     limit:
       selector:
         number:

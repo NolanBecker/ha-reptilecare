@@ -128,7 +128,25 @@ Returns serialized tasks with derived `due_state` values. Supported filters:
 - `due_before`
 - `due_after`
 - `include_terminal`
+- `include_details`
 - `limit`
+
+When `include_details: true` is supplied, each task also includes:
+
+- `presentation`
+  - `title`
+  - `description`
+  - `icon`
+  - `priority`
+  - `care_plan_display_name`
+- `completion_schema`
+  - `outcomes`
+  - `context_fields`
+
+This richer response shape is intended for frontend consumers such as the
+bundled Today's Care card. It keeps the card on the public service API while
+still exposing dynamic outcome choices and structured completion fields from
+the referenced `TaskTemplate`.
 
 ### `reptilecare.get_timeline`
 
@@ -151,7 +169,8 @@ Returns a small diagnostic payload for automations and future dashboards:
 
 For dashboard-safe status summaries, prefer the per-reptile entities described
 in [Entities](ENTITIES.md). Query services remain the place for richer task and
-event detail, including the dashboard patterns documented in
+event detail, including the bundled frontend card documented in
+[Frontend](FRONTEND.md) and the dashboard patterns documented in
 [Dashboard examples](DASHBOARD.md).
 
 ## Common Errors

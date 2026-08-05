@@ -464,6 +464,46 @@ def _serialize_care_task(
     return data
 
 
+def _serialize_task_details(
+    runtime: ReptileCareRuntimeData,
+    task: CareTask,
+) -> dict[str, Any]:
+    """Serialize small presentation and completion details for a task."""
+    template = runtime.task_templates.get(task.task_template_id)
+    care_plan = runtime.care_plan_repository.get(task.care_plan_id)
+    return {
+        "presentation": {
+            "title": template.display_name,
+            "description": template.description,
+            "icon": template.icon,
+            "priority": care_plan.priority.value,
+            "care_plan_display_name": care_plan.display_name,
+        },
+        "completion_schema": {
+            "outcomes": [
+                {
+                    "outcome_id": outcome.outcome_id,
+                    "display_name": outcome.display_name,
+                    "description": outcome.description,
+                }
+                for outcome in template.expected_outcomes
+            ],
+            "context_fields": [
+                {
+                    "field_id": field_definition.field_id,
+                    "display_name": field_definition.display_name,
+                    "field_type": field_definition.field_type.value,
+                    "description": field_definition.description,
+                    "unit": field_definition.unit,
+                    "required": field_definition.required,
+                    "metadata": _serialize_json(field_definition.metadata),
+                }
+                for field_definition in template.context_fields
+            ],
+        },
+    }
+
+
 def _serialize_preview_task(task: CareTask) -> dict[str, Any]:
     """Serialize a preview task without exposing a synthetic transient task ID."""
     data = _serialize_care_task(task)
@@ -849,6 +889,7 @@ async def _async_handle_log_event(call: ServiceCall) -> dict[str, Any]:
 async def _async_handle_get_tasks(call: ServiceCall) -> dict[str, Any]:
     runtime = _runtime(call.hass)
     now = datetime.now(UTC)
+    include_details = cv.boolean(call.data.get("include_details", False))
     tasks = runtime.care_task_repository.all()
     if _field_present(call, "reptile_id") or _field_present(call, "slug"):
         reptile_id = _parse_reptile_identifier(runtime, call)
@@ -883,7 +924,16 @@ async def _async_handle_get_tasks(call: ServiceCall) -> dict[str, Any]:
         if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1:
             raise HomeAssistantError("limit must be a positive integer")
         tasks = tasks[:limit]
-    return {"tasks": [_serialize_care_task(task, now=now) for task in tasks]}
+    serialized_tasks: list[dict[str, Any]] = []
+    for task in tasks:
+        serialized = _serialize_care_task(task, now=now)
+        if include_details:
+            try:
+                serialized.update(_serialize_task_details(runtime, task))
+            except (CarePlanError, TaskTemplateNotFoundError) as err:
+                raise HomeAssistantError(str(err)) from err
+        serialized_tasks.append(serialized)
+    return {"tasks": serialized_tasks}
 
 
 async def _async_handle_get_timeline(call: ServiceCall) -> dict[str, Any]:

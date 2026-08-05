@@ -64,6 +64,24 @@ class ReptileCareEntity(CoordinatorEntity[ReptileCareCoordinator]):
         reptile = self.reptile
         return self._reptile_id if reptile is None else reptile.display_name
 
+    def _identity_attributes(self) -> dict[str, str | None]:
+        """Return small stable reptile identity attributes for UI consumers."""
+        reptile = self.reptile
+        return {
+            "reptile_id": self._reptile_id,
+            "slug": None if reptile is None else reptile.slug,
+            "display_name": None if reptile is None else reptile.display_name,
+        }
+
+    def _merge_identity_attributes(
+        self, attributes: dict[str, object]
+    ) -> dict[str, object]:
+        """Merge reptile identity into bounded entity attributes."""
+        return {
+            **self._identity_attributes(),
+            **attributes,
+        }
+
     async def async_added_to_hass(self) -> None:
         """Subscribe to runtime change notifications."""
         await super().async_added_to_hass()
