@@ -6,6 +6,7 @@ from collections.abc import Awaitable, Callable, Iterable
 import logging
 
 from homeassistant.core import callback
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -76,6 +77,17 @@ class ReptileCareEntity(CoordinatorEntity[ReptileCareCoordinator]):
 
     def _handle_runtime_updated(self) -> None:
         """Refresh entity state on repository-driven runtime updates."""
+        reptile = self.reptile
+        if reptile is not None:
+            device_registry = dr.async_get(self.hass)
+            device = device_registry.async_get_device(
+                identifiers={(DOMAIN, self._reptile_id)}
+            )
+            if device is not None and device.name != reptile.display_name:
+                device_registry.async_update_device(
+                    device.id,
+                    name=reptile.display_name,
+                )
         self.schedule_update_ha_state()
 
 
