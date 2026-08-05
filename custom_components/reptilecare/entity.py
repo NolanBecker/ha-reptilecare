@@ -76,7 +76,7 @@ class ReptileCareEntity(CoordinatorEntity[ReptileCareCoordinator]):
 
     def _handle_runtime_updated(self) -> None:
         """Refresh entity state on repository-driven runtime updates."""
-        self.async_write_ha_state()
+        self.schedule_update_ha_state()
 
 
 async def async_setup_reptile_platform(
