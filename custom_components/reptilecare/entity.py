@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Awaitable, Callable, Iterable
 import logging
 
+from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -80,13 +81,17 @@ class ReptileCareEntity(CoordinatorEntity[ReptileCareCoordinator]):
 
 def async_setup_reptile_platform(
     entry: ReptileCareConfigEntry,
-    async_add_entities: Callable[[Iterable[ReptileCareEntity]], None],
+    async_add_entities: Callable[[Iterable[ReptileCareEntity]], Awaitable[None] | None],
     entity_factory: Callable[[ReptileCareConfigEntry, str], list[ReptileCareEntity]],
 ) -> None:
     """Add reptile entities now and on future runtime discovery updates."""
     known_ids: set[str] = set()
 
-    def _add_missing() -> None:
+    @callback
+    def _schedule_add_missing() -> None:
+        entry.runtime_data.coordinator.hass.async_create_task(_async_add_missing())
+
+    async def _async_add_missing() -> None:
         new_entities: list[ReptileCareEntity] = []
         for reptile_id in entry.runtime_data.entity_projection.all_reptile_ids():
             if reptile_id in known_ids:
@@ -99,13 +104,15 @@ def async_setup_reptile_platform(
                 len(new_entities),
                 type(new_entities[0]).__name__,
             )
-            async_add_entities(new_entities)
+            result = async_add_entities(new_entities)
+            if result is not None:
+                await result
 
-    _add_missing()
+    _schedule_add_missing()
     entry.async_on_unload(
         async_dispatcher_connect(
             entry.runtime_data.coordinator.hass,
             SIGNAL_RUNTIME_UPDATED,
-            _add_missing,
+            _schedule_add_missing,
         )
     )

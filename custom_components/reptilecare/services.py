@@ -776,20 +776,22 @@ async def _async_handle_preview_task_generation(call: ServiceCall) -> dict[str, 
 async def _async_handle_resolve_task(call: ServiceCall) -> dict[str, Any]:
     runtime = _runtime(call.hass)
     task_id = _require_text(call, "task_id")
+    request_kwargs: dict[str, Any] = {
+        "action": _require_text(call, "action"),
+        "outcome_id": _optional_text(call, "outcome_id"),
+        "outcome_metadata": _json_object(call, "outcome_metadata"),
+        "notes": _optional_text(call, "notes"),
+        "attachment_references": _attachments(call, "attachment_references"),
+        "actor_id": _actor_id(call),
+        "source": SOURCE_HOME_ASSISTANT_SERVICE,
+        "environmental_context": _json_object(call, "environmental_context"),
+    }
+    if _field_present(call, "completed_at"):
+        request_kwargs["completed_at"] = _optional_datetime(call, "completed_at")
     try:
         result = await runtime.care_engine.async_resolve_task(
             task_id,
-            CareTaskResolutionRequest(
-                action=_require_text(call, "action"),
-                outcome_id=_optional_text(call, "outcome_id"),
-                outcome_metadata=_json_object(call, "outcome_metadata"),
-                notes=_optional_text(call, "notes"),
-                attachment_references=_attachments(call, "attachment_references"),
-                actor_id=_actor_id(call),
-                source=SOURCE_HOME_ASSISTANT_SERVICE,
-                completed_at=_optional_datetime(call, "completed_at"),
-                environmental_context=_json_object(call, "environmental_context"),
-            ),
+            CareTaskResolutionRequest(**request_kwargs),
         )
     except (
         CareTaskNotFoundError,

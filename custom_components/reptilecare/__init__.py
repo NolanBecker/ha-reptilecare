@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 import logging
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryError
@@ -153,7 +153,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
     async_register_services(hass)
 
-    if PLATFORMS:
+    if PLATFORMS and entry.state is ConfigEntryState.LOADED:
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     _LOGGER.info("ReptileCare initialized")
