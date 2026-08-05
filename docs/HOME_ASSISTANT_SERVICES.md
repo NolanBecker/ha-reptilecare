@@ -16,6 +16,9 @@ Reptiles support two external identifiers:
 Services that target a reptile accept exactly one of `reptile_id` or `slug`.
 `display_name` is never treated as a stable identifier.
 
+The entity layer follows the same rule: reptile devices and entity unique IDs
+use `reptile_id`, not `slug` or `display_name`.
+
 ## Key Services
 
 ### `reptilecare.create_reptile`
@@ -145,6 +148,10 @@ Returns a small diagnostic payload for automations and future dashboards:
 - `pending_task_count`
 - `completed_task_count`
 - `care_event_count`
+
+For dashboard-safe status summaries, prefer the per-reptile entities described
+in [Entities](ENTITIES.md). Query services remain the place for richer task and
+event detail.
 
 ## Common Errors
 

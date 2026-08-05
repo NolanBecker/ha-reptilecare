@@ -562,7 +562,7 @@ async def test_system_health_reports_runtime_counts(
 
     health = await _call_service(hass, "system_health", {})
 
-    assert health["integration_version"] == "0.1.0"
+    assert health["integration_version"] == "0.1.1"
     assert health["schema_version"]["reptiles"] == 1
     assert health["species_profile_count"] >= 1
     assert health["reptile_count"] == 1

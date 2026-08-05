@@ -5,7 +5,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 import logging
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigEntryState,
+    OperationNotAllowed,
+)
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryError
@@ -20,6 +24,7 @@ from .domain.reptile import ReptileError, ReptileRepository
 from .domain.species import SpeciesProfileError, SpeciesProfileRegistry
 from .domain.task_template import TaskTemplateError, TaskTemplateRegistry
 from .domain.workflow import WorkflowError, WorkflowRegistry
+from .entity_projection import ReptileCareEntityProjection
 from .reptile_storage import HomeAssistantReptilePersistence
 from .services import async_register_services, async_unregister_services
 from .storage import HomeAssistantCareEventStore
@@ -27,7 +32,11 @@ from .task_generation import CareTaskGenerator, ScheduleCalculator
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: tuple[Platform, ...] = ()
+PLATFORMS: tuple[Platform, ...] = (
+    Platform.SENSOR,
+    Platform.BINARY_SENSOR,
+    Platform.BUTTON,
+)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) -> bool:
@@ -121,6 +130,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
         if "async_config_entry_first_refresh" not in str(err):
             raise
         await coordinator.async_refresh()
+    entity_projection = ReptileCareEntityProjection(
+        reptile_repository,
+        care_plan_repository,
+        care_task_repository,
+        task_templates,
+        species_profiles,
+        lambda: coordinator.timeline,
+    )
 
     entry.runtime_data = ReptileCareRuntimeData(
         coordinator=coordinator,
@@ -135,12 +152,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
         care_task_generator=care_task_generator,
         workflow_evaluator=workflow_evaluator,
         care_engine=care_engine,
+        entity_projection=entity_projection,
     )
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
     async_register_services(hass)
 
     if PLATFORMS:
-        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+        try:
+            await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+        except OperationNotAllowed:
+            if entry.state is not ConfigEntryState.NOT_LOADED:
+                raise
 
     _LOGGER.info("ReptileCare initialized")
     return True

@@ -60,6 +60,7 @@ from .domain.task_template import TaskPriority, TaskTemplateNotFoundError
 from .domain.workflow import WorkflowNotFoundError
 from .manifest import INTEGRATION_VERSION
 from .models import CareEvent, CareEventType, ReptileCareRuntimeData
+from .runtime_updates import async_notify_runtime_updated
 from .storage import STORAGE_MINOR_VERSION, STORAGE_VERSION
 
 SOURCE_HOME_ASSISTANT_SERVICE = "home_assistant_service"
@@ -219,6 +220,10 @@ def async_unregister_services(hass: HomeAssistant) -> None:
 
 
 def _runtime(hass: HomeAssistant) -> ReptileCareRuntimeData:
+    return _runtime_entry(hass).runtime_data
+
+
+def _runtime_entry(hass: HomeAssistant):
     entries = [
         entry
         for entry in hass.config_entries.async_entries(DOMAIN)
@@ -228,7 +233,7 @@ def _runtime(hass: HomeAssistant) -> ReptileCareRuntimeData:
         raise HomeAssistantError("ReptileCare is not set up")
     if len(entries) != 1:
         raise HomeAssistantError("ReptileCare requires exactly one active config entry")
-    return cast("ReptileCareRuntimeData", entries[0].runtime_data)
+    return entries[0]
 
 
 def _actor_id(call: ServiceCall) -> str | None:
@@ -549,6 +554,7 @@ async def _async_handle_create_reptile(call: ServiceCall) -> dict[str, Any]:
         ValueError,
     ) as err:
         raise HomeAssistantError(str(err)) from err
+    async_notify_runtime_updated(call.hass)
     return {"reptile": _serialize_reptile(reptile)}
 
 
@@ -589,6 +595,7 @@ async def _async_handle_update_reptile(call: ServiceCall) -> dict[str, Any]:
         ValueError,
     ) as err:
         raise HomeAssistantError(str(err)) from err
+    async_notify_runtime_updated(call.hass)
     return {"reptile": _serialize_reptile(updated)}
 
 
@@ -599,6 +606,7 @@ async def _async_handle_enable_reptile(call: ServiceCall) -> dict[str, Any]:
         await runtime.reptile_repository.async_enable(reptile_id)
     except ReptileError as err:
         raise HomeAssistantError(str(err)) from err
+    async_notify_runtime_updated(call.hass)
     return {"reptile": _serialize_reptile(runtime.reptile_repository.get(reptile_id))}
 
 
@@ -609,6 +617,7 @@ async def _async_handle_disable_reptile(call: ServiceCall) -> dict[str, Any]:
         await runtime.reptile_repository.async_disable(reptile_id)
     except ReptileError as err:
         raise HomeAssistantError(str(err)) from err
+    async_notify_runtime_updated(call.hass)
     return {"reptile": _serialize_reptile(runtime.reptile_repository.get(reptile_id))}
 
 
@@ -646,6 +655,7 @@ async def _async_handle_create_care_plan(call: ServiceCall) -> dict[str, Any]:
         ValueError,
     ) as err:
         raise HomeAssistantError(str(err)) from err
+    async_notify_runtime_updated(call.hass)
     return {"care_plan": _serialize_care_plan(care_plan)}
 
 
@@ -690,6 +700,7 @@ async def _async_handle_update_care_plan(call: ServiceCall) -> dict[str, Any]:
         ValueError,
     ) as err:
         raise HomeAssistantError(str(err)) from err
+    async_notify_runtime_updated(call.hass)
     return {"care_plan": _serialize_care_plan(updated)}
 
 
@@ -700,6 +711,7 @@ async def _async_handle_enable_care_plan(call: ServiceCall) -> dict[str, Any]:
         await runtime.care_plan_repository.async_enable(care_plan_id)
     except CarePlanError as err:
         raise HomeAssistantError(str(err)) from err
+    async_notify_runtime_updated(call.hass)
     return {
         "care_plan": _serialize_care_plan(
             runtime.care_plan_repository.get(care_plan_id)
@@ -714,6 +726,7 @@ async def _async_handle_disable_care_plan(call: ServiceCall) -> dict[str, Any]:
         await runtime.care_plan_repository.async_disable(care_plan_id)
     except CarePlanError as err:
         raise HomeAssistantError(str(err)) from err
+    async_notify_runtime_updated(call.hass)
     return {
         "care_plan": _serialize_care_plan(
             runtime.care_plan_repository.get(care_plan_id)
@@ -730,6 +743,7 @@ async def _async_handle_generate_tasks(call: ServiceCall) -> dict[str, Any]:
         reptile_id=reptile_id,
         care_plan_id=care_plan_id,
     )
+    async_notify_runtime_updated(call.hass)
     return {
         "created_task_ids": list(result.created_task_ids),
         "existing_task_ids": list(result.existing_task_ids),
@@ -766,20 +780,33 @@ async def _async_handle_preview_task_generation(call: ServiceCall) -> dict[str, 
 async def _async_handle_resolve_task(call: ServiceCall) -> dict[str, Any]:
     runtime = _runtime(call.hass)
     task_id = _require_text(call, "task_id")
+    request_kwargs: dict[str, Any] = {
+        "action": _require_text(call, "action"),
+        "outcome_id": _optional_text(call, "outcome_id"),
+        "outcome_metadata": _json_object(call, "outcome_metadata"),
+        "notes": _optional_text(call, "notes"),
+        "attachment_references": _attachments(call, "attachment_references"),
+        "actor_id": _actor_id(call),
+        "source": SOURCE_HOME_ASSISTANT_SERVICE,
+        "environmental_context": _json_object(call, "environmental_context"),
+    }
+    if _field_present(call, "completed_at"):
+        request_kwargs["completed_at"] = _optional_datetime(call, "completed_at")
+    else:
+        try:
+            existing_task = runtime.care_task_repository.get(task_id)
+        except CareTaskNotFoundError:
+            existing_task = None
+        if (
+            existing_task is not None
+            and existing_task.status is not CareTaskStatus.PENDING
+            and existing_task.completed_at is not None
+        ):
+            request_kwargs["completed_at"] = existing_task.completed_at
     try:
         result = await runtime.care_engine.async_resolve_task(
             task_id,
-            CareTaskResolutionRequest(
-                action=_require_text(call, "action"),
-                outcome_id=_optional_text(call, "outcome_id"),
-                outcome_metadata=_json_object(call, "outcome_metadata"),
-                notes=_optional_text(call, "notes"),
-                attachment_references=_attachments(call, "attachment_references"),
-                actor_id=_actor_id(call),
-                source=SOURCE_HOME_ASSISTANT_SERVICE,
-                completed_at=_optional_datetime(call, "completed_at"),
-                environmental_context=_json_object(call, "environmental_context"),
-            ),
+            CareTaskResolutionRequest(**request_kwargs),
         )
     except (
         CareTaskNotFoundError,
@@ -790,6 +817,7 @@ async def _async_handle_resolve_task(call: ServiceCall) -> dict[str, Any]:
     ) as err:
         raise HomeAssistantError(str(err)) from err
     await runtime.coordinator.async_refresh()
+    async_notify_runtime_updated(call.hass)
     return {
         "task": _serialize_care_task(result.task),
         "care_event": _serialize_event(result.care_event),
@@ -825,6 +853,7 @@ async def _async_handle_log_event(call: ServiceCall) -> dict[str, Any]:
     except (ValueError, ReptileError) as err:
         raise HomeAssistantError(str(err)) from err
     await runtime.coordinator.async_refresh()
+    async_notify_runtime_updated(call.hass)
     return {"care_event": _serialize_event(event)}
 
 

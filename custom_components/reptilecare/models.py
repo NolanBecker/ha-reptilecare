@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from .domain.species import SpeciesProfileRegistry
     from .domain.task_template import TaskTemplateRegistry
     from .domain.workflow import WorkflowRegistry
+    from .entity_projection import ReptileCareEntityProjection
     from .storage import CareEventStore
     from .task_generation import CareTaskGenerator, ScheduleCalculator
     from .timeline import Timeline
@@ -161,6 +162,7 @@ class ReptileCareRuntimeData:
     care_task_generator: CareTaskGenerator
     workflow_evaluator: WorkflowEvaluator
     care_engine: CareEngine
+    entity_projection: ReptileCareEntityProjection
 
     @property
     def timeline(self) -> Timeline:

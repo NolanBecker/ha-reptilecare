@@ -71,5 +71,34 @@
       "name": "System health",
       "description": "Return ReptileCare runtime counts and version information."
     }
+  },
+  "entity": {
+    "sensor": {
+      "pending_tasks": {
+        "name": "Pending care tasks"
+      },
+      "next_task": {
+        "name": "Next care task"
+      },
+      "last_event": {
+        "name": "Last care event"
+      }
+    },
+    "binary_sensor": {
+      "care_due": {
+        "name": "Care due"
+      },
+      "overdue_care": {
+        "name": "Overdue care"
+      },
+      "pending_care": {
+        "name": "Pending care"
+      }
+    },
+    "button": {
+      "generate_tasks": {
+        "name": "Generate tasks"
+      }
+    }
   }
 }
