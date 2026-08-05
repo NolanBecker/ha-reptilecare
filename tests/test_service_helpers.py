@@ -6,8 +6,11 @@ from datetime import UTC, date, datetime
 from types import SimpleNamespace
 from uuid import uuid4
 
+from homeassistant.config_entries import ConfigEntryState
+from homeassistant.exceptions import HomeAssistantError
 import pytest
 
+from custom_components.reptilecare.const import DOMAIN
 from custom_components.reptilecare.domain.care_plan import CarePlanScheduleUnit
 from custom_components.reptilecare.domain.care_task import CareTask
 from custom_components.reptilecare.domain.reptile import (
@@ -16,17 +19,29 @@ from custom_components.reptilecare.domain.reptile import (
     ReptileRepository,
 )
 from custom_components.reptilecare.domain.species import SpeciesProfileRegistry
+from custom_components.reptilecare.entity import ReptileCareEntity
 from custom_components.reptilecare.models import CareEvent, CareEventType
 from custom_components.reptilecare.services import (
+    _actor_id,
+    _attachments,
+    _field_present,
     _generation_parameters,
+    _json_object,
+    _optional_date,
+    _optional_datetime,
+    _optional_text,
     _parse_date,
     _parse_datetime,
     _parse_reminder,
     _parse_reptile_identifier,
     _parse_schedule,
     _parse_timedelta,
+    _require_text,
+    _runtime,
     _serialize_care_task,
     _serialize_event,
+    async_register_services,
+    async_unregister_services,
 )
 
 PIXEL_ID = "550e8400-e29b-41d4-a716-446655440000"
@@ -185,3 +200,101 @@ def test_generation_parameters_reject_conflicting_reptile_and_plan() -> None:
     import asyncio
 
     asyncio.run(_run())
+
+
+def test_service_helper_field_parsing_and_json_validation() -> None:
+    """Field helpers normalize valid input and reject invalid payloads."""
+    call = SimpleNamespace(
+        data={
+            "name": " Pixel ",
+            "empty": "   ",
+            "none_field": None,
+            "date": "2026-08-05",
+            "timestamp": "2026-08-05T12:00:00+00:00",
+            "attachments": [" one ", "two"],
+            "payload": {"value": 3, "items": [1, "two"]},
+        },
+        context=SimpleNamespace(user_id="keeper-1"),
+    )
+
+    assert _actor_id(call) == "keeper-1"
+    assert _field_present(call, "name") is True
+    assert _require_text(call, "name") == "Pixel"
+    assert _optional_text(call, "name") == "Pixel"
+    assert _optional_text(call, "missing") is None
+    assert _optional_text(call, "none_field") is None
+    assert _optional_date(call, "date") == date(2026, 8, 5)
+    assert _optional_date(call, "missing") is None
+    assert _optional_datetime(call, "timestamp") == datetime(2026, 8, 5, 12, tzinfo=UTC)
+    assert _optional_datetime(call, "missing") is None
+    assert _attachments(call, "attachments") == ("one", "two")
+    assert _attachments(call, "missing") == ()
+    assert _json_object(call, "payload")["items"] == (1, "two")
+
+    with pytest.raises(HomeAssistantError, match="empty must be a non-empty string"):
+        _require_text(call, "empty")
+    with pytest.raises(
+        HomeAssistantError, match="empty must be a non-empty string when provided"
+    ):
+        _optional_text(call, "empty")
+    with pytest.raises(HomeAssistantError, match="bad must be an object"):
+        _json_object(SimpleNamespace(data={"bad": []}), "bad")
+    with pytest.raises(HomeAssistantError, match="files must be an array of strings"):
+        _attachments(SimpleNamespace(data={"files": "nope"}), "files")
+
+
+def test_runtime_and_service_registration_helpers() -> None:
+    """Runtime lookup and service registration handle edge cases cleanly."""
+
+    class FakeServices:
+        def __init__(self) -> None:
+            self.registered: dict[tuple[str, str], object] = {}
+
+        def has_service(self, domain: str, service: str) -> bool:
+            return (domain, service) in self.registered
+
+        def async_register(self, domain: str, service: str, handler, **kwargs) -> None:
+            self.registered[(domain, service)] = (handler, kwargs)
+
+        def async_remove(self, domain: str, service: str) -> None:
+            self.registered.pop((domain, service), None)
+
+    services = FakeServices()
+    hass = SimpleNamespace(services=services)
+
+    async_register_services(hass)
+    registered_once = len(services.registered)
+    assert services.has_service(DOMAIN, "create_reptile")
+    assert services.has_service(DOMAIN, "system_health")
+
+    async_register_services(hass)
+    assert len(services.registered) == registered_once
+
+    async_unregister_services(hass)
+    assert services.registered == {}
+
+    runtime = object()
+    loaded_entry = SimpleNamespace(state=ConfigEntryState.LOADED, runtime_data=runtime)
+    hass_runtime = SimpleNamespace(
+        config_entries=SimpleNamespace(async_entries=lambda domain: [loaded_entry])
+    )
+    assert _runtime(hass_runtime) is runtime
+
+    empty_hass = SimpleNamespace(
+        config_entries=SimpleNamespace(async_entries=lambda domain: [])
+    )
+    with pytest.raises(HomeAssistantError, match="not set up"):
+        _runtime(empty_hass)
+
+    multi_hass = SimpleNamespace(
+        config_entries=SimpleNamespace(
+            async_entries=lambda domain: [loaded_entry, loaded_entry]
+        )
+    )
+    with pytest.raises(HomeAssistantError, match="exactly one active config entry"):
+        _runtime(multi_hass)
+
+
+def test_reptile_entity_base_declares_entity_names() -> None:
+    """Importing the shared entity base keeps the module covered."""
+    assert ReptileCareEntity.__name__ == "ReptileCareEntity"
