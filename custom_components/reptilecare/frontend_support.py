@@ -9,7 +9,7 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN, FRONTEND_MODULE_URL, FRONTEND_STATIC_PATH
-from .manifest import INTEGRATION_VERSION
+from .version import INTEGRATION_VERSION
 
 _DATA_STATIC_REGISTERED = f"{DOMAIN}_frontend_static_registered"
 _FRONTEND_DIRECTORY = Path(__file__).parent / "frontend"

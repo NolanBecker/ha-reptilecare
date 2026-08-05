@@ -15,7 +15,7 @@ from custom_components.reptilecare.frontend_support import (
     async_register_frontend_assets,
     async_unregister_frontend_assets,
 )
-from custom_components.reptilecare.manifest import INTEGRATION_VERSION
+from custom_components.reptilecare.version import INTEGRATION_VERSION
 
 
 def test_frontend_assets_register_once_and_unregister(

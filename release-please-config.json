@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "c8982918939010369994a74f31a9754bd480e5a7",
+  "draft": true,
+  "include-component-in-tag": false,
+  "include-v-in-tag": true,
+  "packages": {
+    ".": {
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "jsonpath": "$.version",
+          "path": "custom_components/reptilecare/manifest.json",
+          "type": "json"
+        }
+      ],
+      "package-name": "ha-reptilecare",
+      "release-type": "python"
+    }
+  }
+}
