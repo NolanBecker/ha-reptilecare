@@ -181,6 +181,10 @@ def test_reptile_and_care_plan_handlers(monkeypatch) -> None:
             "custom_components.reptilecare.services._runtime",
             lambda hass: runtime,
         )
+        monkeypatch.setattr(
+            "custom_components.reptilecare.services.async_notify_runtime_updated",
+            lambda hass: None,
+        )
 
         created = await _async_handle_create_reptile(
             _call(
@@ -354,6 +358,10 @@ def test_generation_resolution_event_and_health_handlers(monkeypatch) -> None:
         monkeypatch.setattr(
             "custom_components.reptilecare.services._runtime",
             lambda hass: runtime,
+        )
+        monkeypatch.setattr(
+            "custom_components.reptilecare.services.async_notify_runtime_updated",
+            lambda hass: None,
         )
 
         generated = await _async_handle_generate_tasks(

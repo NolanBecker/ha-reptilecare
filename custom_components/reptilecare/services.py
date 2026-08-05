@@ -792,17 +792,6 @@ async def _async_handle_resolve_task(call: ServiceCall) -> dict[str, Any]:
     }
     if _field_present(call, "completed_at"):
         request_kwargs["completed_at"] = _optional_datetime(call, "completed_at")
-    else:
-        try:
-            existing_task = runtime.care_task_repository.get(task_id)
-        except CareTaskNotFoundError:
-            existing_task = None
-        if (
-            existing_task is not None
-            and existing_task.status is not CareTaskStatus.PENDING
-            and existing_task.completed_at is not None
-        ):
-            request_kwargs["completed_at"] = existing_task.completed_at
     try:
         result = await runtime.care_engine.async_resolve_task(
             task_id,
