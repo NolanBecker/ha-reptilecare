@@ -255,6 +255,9 @@ consistent.
 
 The current foundation now implements Home Assistant services and compact
 per-reptile task-state entities.
+The next presentation step is reusable built-in Lovelace dashboard examples
+that compose those entities and services without introducing a custom frontend
+card yet.
 
 ## Entity projections
 

@@ -1,0 +1,120 @@
+# Example manual Lovelace view for Pixel.
+# Replace every example entity ID with your own generated entity IDs.
+title: Pixel
+path: pixel
+icon: mdi:lizard
+cards:
+  - type: markdown
+    content: |
+      # Pixel
+      Example dashboard for a Gargoyle Gecko.
+
+      `camera.pixel_enclosure`, `sensor.pixel_temperature`, and
+      `sensor.pixel_humidity` are user-supplied environmental entities outside
+      ReptileCare.
+  - type: picture-entity
+    entity: camera.pixel_enclosure
+    name: Enclosure Camera
+    camera_view: live
+    show_state: false
+    show_name: true
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      - type: tile
+        entity: sensor.pixel_temperature
+        name: Temperature
+      - type: tile
+        entity: sensor.pixel_humidity
+        name: Humidity
+  - type: history-graph
+    title: Environment History
+    hours_to_show: 24
+    refresh_interval: 0
+    entities:
+      - entity: sensor.pixel_temperature
+      - entity: sensor.pixel_humidity
+  - type: vertical-stack
+    cards:
+      - type: markdown
+        content: |
+          ## ReptileCare Overview
+          Replace these example entity IDs with the ones generated for your own
+          reptile device.
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: tile
+            entity: sensor.pixel_pending_care_tasks
+            name: Pending Care
+            color: state
+          - type: tile
+            entity: binary_sensor.pixel_overdue_care
+            name: Overdue Care
+            color: state
+          - type: tile
+            entity: sensor.pixel_next_care_task
+            name: Next Care Task
+          - type: tile
+            entity: sensor.pixel_last_care_event
+            name: Last Care Event
+  - type: vertical-stack
+    cards:
+      - type: heading
+        heading: Today's Care
+        icon: mdi:clipboard-text-clock-outline
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: tile
+            entity: sensor.pixel_pending_care_tasks
+            name: Pending
+            color: state
+          - type: tile
+            entity: binary_sensor.pixel_pending_care
+            name: Care Pending
+            color: state
+          - type: tile
+            entity: binary_sensor.pixel_care_due
+            name: Care Due
+            color: state
+          - type: tile
+            entity: binary_sensor.pixel_overdue_care
+            name: Overdue
+            color: state
+      - type: tile
+        entity: sensor.pixel_next_care_task
+        name: Next Care Task
+      - type: tile
+        entity: button.pixel_generate_tasks
+        name: Generate Tasks
+        icon: mdi:playlist-plus
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.pixel_overdue_care
+            state: "on"
+        card:
+          type: markdown
+          content: |
+            ### Overdue care
+            Use the next-task sensor for the quickest glanceable answer. For
+            detailed task records, use `reptilecare.get_tasks`.
+  - type: vertical-stack
+    cards:
+      - type: heading
+        heading: Recent Activity
+        icon: mdi:history
+      - type: tile
+        entity: sensor.pixel_last_care_event
+        name: Last Care Event
+      - type: markdown
+        content: |
+          For full activity history, use `reptilecare.get_timeline`.
+
+          Standard Lovelace does not yet provide a polished task-resolution
+          workflow for arbitrary `CareTask` records. That richer experience will
+          belong in a future ReptileCare Center or a future custom Lovelace
+          card.

@@ -1,0 +1,31 @@
+# Replace these example entity IDs with the ones Home Assistant generated
+# for your reptile device.
+type: vertical-stack
+cards:
+  - type: markdown
+    content: |
+      ## Pixel
+      **Gargoyle Gecko**
+
+      Replace both the reptile name and species text for your own reptile.
+      ReptileCare does not currently expose a species entity, so this label is
+      intentionally static in the example.
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      - type: tile
+        entity: sensor.pixel_pending_care_tasks
+        name: Pending Care
+        color: state
+      - type: tile
+        entity: binary_sensor.pixel_overdue_care
+        name: Overdue Care
+        color: state
+      - type: tile
+        entity: sensor.pixel_next_care_task
+        name: Next Care Task
+      - type: tile
+        entity: sensor.pixel_last_care_event
+        name: Last Care Event
+
