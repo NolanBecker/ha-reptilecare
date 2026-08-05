@@ -75,6 +75,7 @@ class ReptileCareEntity(CoordinatorEntity[ReptileCareCoordinator]):
             )
         )
 
+    @callback
     def _handle_runtime_updated(self) -> None:
         """Refresh entity state on repository-driven runtime updates."""
         reptile = self.reptile

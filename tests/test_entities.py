@@ -203,7 +203,7 @@ async def test_entity_states_update_from_services_and_button(
     assert hass.states.get(pending_entity_id).state == "1"
     assert hass.states.get(next_entity_id).state == "Feed Fruit Mix"
     assert hass.states.get(due_entity_id).state == STATE_OFF
-    assert hass.states.get(overdue_entity_id).state == STATE_OFF
+    assert hass.states.get(overdue_entity_id).state == STATE_ON
     assert hass.states.get(pending_binary_entity_id).state == STATE_ON
     assert hass.states.get(pending_entity_id).attributes["task_ids"]
 
