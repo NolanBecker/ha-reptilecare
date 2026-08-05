@@ -33,8 +33,9 @@ boundaries with implementation-ready recommendations for `SpeciesProfile`,
 `TaskTemplate`, task outcomes, workflow-generated follow-ups, persistence, and
 Home Assistant adapters. The current implementation now covers persistent task
 generation, the first end-to-end CareEngine execution loop, a thin Home
-Assistant service adapter over those capabilities, and compact per-reptile
-entity projections.
+Assistant service adapter over those capabilities, compact per-reptile entity
+projections, and the first bundled frontend card that consumes the public
+service layer.
 
 ## Reptile
 
@@ -254,10 +255,37 @@ its own copy of them. This keeps dashboards, services, and notifications
 consistent.
 
 The current foundation now implements Home Assistant services and compact
-per-reptile task-state entities.
-The next presentation step is reusable built-in Lovelace dashboard examples
-that compose those entities and services without introducing a custom frontend
-card yet.
+per-reptile task-state entities, plus the first bundled custom Lovelace card.
+The current presentation adapters are:
+
+- Home Assistant services for automation and structured queries
+- compact Home Assistant entities for recorder-friendly projections
+- a bundled frontend card for richer task interaction
+
+Future cards should keep business logic in reusable frontend-side services and
+continue to rely on the public Home Assistant service layer rather than
+querying repositories directly.
+
+## Frontend foundation
+
+The bundled frontend modules live under `custom_components/reptilecare/frontend/`
+and are intentionally organized for reuse:
+
+- `cards/`
+- `components/`
+- `dialogs/`
+- `models/`
+- `services/`
+- `styles/`
+- `utils/`
+
+The first card, **Today's Care**, stays thin. It validates `reptile_id` or
+`slug`, loads actionable tasks through `reptilecare.get_tasks`, resolves task
+completion through `reptilecare.resolve_task`, and refreshes from existing
+entity-driven runtime updates instead of polling.
+
+Task presentation, quick-action eligibility, and completion payload assembly
+remain in reusable frontend modules so future cards can share them.
 
 ## Entity projections
 

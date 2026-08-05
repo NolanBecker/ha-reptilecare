@@ -489,11 +489,15 @@ def test_query_handlers_filter_and_validate(monkeypatch) -> None:
                     "slug": "pixel",
                     "due_state": "upcoming",
                     "due_after": "2026-08-05T12:00:00+00:00",
+                    "include_details": True,
                     "limit": 1,
                 }
             )
         )
         assert [task["task_id"] for task in tasks["tasks"]] == [TASK_ID_1]
+        assert tasks["tasks"][0]["presentation"]["title"] == "Feed Fruit Mix"
+        assert tasks["tasks"][0]["presentation"]["priority"] == "normal"
+        assert tasks["tasks"][0]["completion_schema"]["outcomes"][0]["outcome_id"]
 
         completed = await _async_handle_get_tasks(
             _call(

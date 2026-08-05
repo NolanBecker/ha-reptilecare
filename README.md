@@ -13,8 +13,9 @@ reptile needs today.
 > [!NOTE]
 > ReptileCare currently provides domain, persistence, CareTask generation,
 > CareEngine execution, Home Assistant services, and the first per-reptile
-> entity layer. It does not yet expose reptile management UI, notifications, or
-> custom dashboard surfaces.
+> entity layer, plus the first bundled Lovelace frontend card. It does not yet
+> expose reptile management UI, notifications, or the future ReptileCare
+> Center.
 
 ## Features
 
@@ -37,6 +38,8 @@ The current foundation provides:
   logging, runtime health diagnostics, and read-only task and timeline queries
 - Per-reptile Home Assistant devices with compact care-summary sensors, binary
   sensors, and a task-generation button
+- A bundled "Today's Care" Lovelace card that loads from the integration and
+  resolves tasks through the public service layer
 - A validated multi-reptile repository with immutable keeper-owned records
 - Separate, versioned persistence for reptiles and CareEvent history
 - Versioned persistent CareEvent history backed by Home Assistant storage
@@ -154,6 +157,8 @@ and application layers. Notifications and richer UI remain future work.
   contracts, identifiers, responses, and examples
 - [Entities](docs/ENTITIES.md) — reptile devices, summary sensors, binary
   sensors, buttons, and projection behavior
+- [Frontend](docs/FRONTEND.md) — bundled frontend architecture, the Today's
+  Care card, dialogs, quick actions, and future card reuse
 - [Dashboard examples](docs/DASHBOARD.md) — built-in Lovelace layouts for
   adding care management to an existing reptile dashboard
 - [Reptiles](docs/REPTILES.md) — individual-animal ownership, overrides,
@@ -192,6 +197,19 @@ Screenshot note:
 
 - A real dashboard screenshot will be added in a future update after the
   example layouts stabilize.
+
+## Frontend card
+
+ReptileCare now also ships a bundled custom Lovelace card:
+
+- `custom:reptilecare-todays-care-card`
+
+The card is served by the integration itself and retrieves actionable tasks
+through the existing `reptilecare.get_tasks` and `reptilecare.resolve_task`
+services rather than bypassing the public application API.
+
+See [Frontend](docs/FRONTEND.md) for card configuration, lifecycle, and
+completion-dialog behavior.
 
 Pixel, a Gargoyle Gecko, is the first development reptile and will guide early
 use cases. ReptileCare is intentionally designed to support many individual

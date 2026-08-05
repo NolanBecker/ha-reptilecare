@@ -1,0 +1,16 @@
+{
+  "name": "ha-reptilecare-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint:frontend": "eslint \"custom_components/reptilecare/frontend/**/*.js\" \"tests/frontend/**/*.test.js\"",
+    "test:frontend": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.32.0",
+    "eslint": "^9.32.0",
+    "globals": "^16.3.0",
+    "vitest": "^3.2.4"
+  }
+}
+

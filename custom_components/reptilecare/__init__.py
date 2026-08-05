@@ -25,6 +25,10 @@ from .domain.species import SpeciesProfileError, SpeciesProfileRegistry
 from .domain.task_template import TaskTemplateError, TaskTemplateRegistry
 from .domain.workflow import WorkflowError, WorkflowRegistry
 from .entity_projection import ReptileCareEntityProjection
+from .frontend_support import (
+    async_register_frontend_assets,
+    async_unregister_frontend_assets,
+)
 from .reptile_storage import HomeAssistantReptilePersistence
 from .services import async_register_services, async_unregister_services
 from .storage import HomeAssistantCareEventStore
@@ -156,6 +160,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
     )
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
     async_register_services(hass)
+    await async_register_frontend_assets(hass)
 
     if PLATFORMS:
         try:
@@ -176,6 +181,7 @@ async def async_unload_entry(
         entry, PLATFORMS
     )
     if unload_ok:
+        async_unregister_frontend_assets(hass)
         async_unregister_services(hass)
         _LOGGER.info("ReptileCare unloaded")
     return unload_ok
