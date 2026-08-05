@@ -255,6 +255,60 @@ async def test_generate_tasks_is_idempotent_and_filterable(
     assert second["errors"] == {}
 
 
+async def test_preview_task_generation_is_non_persisting(
+    hass: HomeAssistant,
+) -> None:
+    """Preview generation reuses production logic without writing tasks."""
+    await _setup_entry(hass)
+    await _create_pixel(hass)
+    plan = await _create_feeding_plan(hass, slug="pixel")
+
+    preview = await _call_service(
+        hass,
+        "preview_task_generation",
+        {
+            "care_plan_id": plan["care_plan_id"],
+            "now": datetime(2026, 8, 5, 12, tzinfo=UTC),
+            "horizon_duration": {"days": 1},
+        },
+    )
+    assert len(preview["would_create"]) == 1
+    assert preview["already_exists"] == []
+    assert preview["skipped"] == []
+    assert preview["warnings"] == []
+    assert "task_id" not in preview["would_create"][0]
+
+    tasks = await _call_service(
+        hass,
+        "get_tasks",
+        {"slug": "pixel", "include_terminal": True},
+    )
+    assert tasks["tasks"] == []
+
+    generated = await _call_service(
+        hass,
+        "generate_tasks",
+        {
+            "care_plan_id": plan["care_plan_id"],
+            "now": datetime(2026, 8, 5, 12, tzinfo=UTC),
+            "horizon_duration": {"days": 1},
+        },
+    )
+    assert len(generated["created_task_ids"]) == 1
+
+    preview_after = await _call_service(
+        hass,
+        "preview_task_generation",
+        {
+            "care_plan_id": plan["care_plan_id"],
+            "now": datetime(2026, 8, 5, 12, tzinfo=UTC),
+            "horizon_duration": {"days": 1},
+        },
+    )
+    assert preview_after["would_create"] == []
+    assert len(preview_after["already_exists"]) == 1
+
+
 async def test_resolve_task_returns_event_follow_up_and_actor(
     hass: HomeAssistant,
 ) -> None:
@@ -477,3 +531,44 @@ async def test_create_care_plan_rejects_invalid_schedule(
                 },
             },
         )
+
+
+async def test_system_health_reports_runtime_counts(
+    hass: HomeAssistant,
+) -> None:
+    """System health returns stable high-level runtime diagnostics."""
+    await _setup_entry(hass)
+    pixel = await _create_pixel(hass)
+    plan = await _create_feeding_plan(hass, reptile_id=pixel["reptile_id"])
+    await _call_service(
+        hass,
+        "generate_tasks",
+        {
+            "care_plan_id": plan["care_plan_id"],
+            "now": datetime(2026, 8, 5, 12, tzinfo=UTC),
+            "horizon_duration": {"days": 1},
+        },
+    )
+    await _call_service(
+        hass,
+        "log_event",
+        {
+            "slug": "pixel",
+            "event_type": "health_note",
+            "timestamp": datetime(2026, 8, 5, 13, tzinfo=UTC),
+            "context": {"observation": "calm"},
+        },
+    )
+
+    health = await _call_service(hass, "system_health", {})
+
+    assert health["integration_version"] == "0.1.0"
+    assert health["schema_version"]["reptiles"] == 1
+    assert health["species_profile_count"] >= 1
+    assert health["reptile_count"] == 1
+    assert health["care_plan_count"] == 1
+    assert health["task_template_count"] >= 1
+    assert health["workflow_graph_count"] >= 1
+    assert health["pending_task_count"] == 1
+    assert health["completed_task_count"] == 0
+    assert health["care_event_count"] == 1

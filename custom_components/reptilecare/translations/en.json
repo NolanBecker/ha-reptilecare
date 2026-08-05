@@ -47,6 +47,10 @@
       "name": "Generate tasks",
       "description": "Generate missing care tasks from enabled care plans."
     },
+    "preview_task_generation": {
+      "name": "Preview task generation",
+      "description": "Preview which care tasks would be created without persisting changes."
+    },
     "resolve_task": {
       "name": "Resolve task",
       "description": "Resolve one care task through the CareEngine."
@@ -62,6 +66,10 @@
     "get_timeline": {
       "name": "Get timeline",
       "description": "Return filtered immutable CareEvents in chronological order."
+    },
+    "system_health": {
+      "name": "System health",
+      "description": "Return ReptileCare runtime counts and version information."
     }
   }
 }

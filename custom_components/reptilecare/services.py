@@ -23,6 +23,7 @@ from .application import (
 )
 from .const import DOMAIN
 from .domain.care_plan import (
+    CARE_PLAN_SCHEMA_VERSION,
     CarePlan,
     CarePlanError,
     CarePlanNotFoundError,
@@ -36,6 +37,7 @@ from .domain.care_plan import (
     care_plan_to_dict,
 )
 from .domain.care_task import (
+    CARE_TASK_SCHEMA_VERSION,
     CareTask,
     CareTaskNotFoundError,
     CareTaskStatus,
@@ -44,6 +46,7 @@ from .domain.care_task import (
     project_due_state,
 )
 from .domain.reptile import (
+    REPTILE_SCHEMA_VERSION,
     DuplicateReptileSlugError,
     InvalidReptileError,
     Reptile,
@@ -55,7 +58,9 @@ from .domain.reptile import (
 )
 from .domain.task_template import TaskPriority, TaskTemplateNotFoundError
 from .domain.workflow import WorkflowNotFoundError
+from .manifest import INTEGRATION_VERSION
 from .models import CareEvent, CareEventType, ReptileCareRuntimeData
+from .storage import STORAGE_MINOR_VERSION, STORAGE_VERSION
 
 SOURCE_HOME_ASSISTANT_SERVICE = "home_assistant_service"
 
@@ -68,10 +73,12 @@ SERVICE_UPDATE_CARE_PLAN = "update_care_plan"
 SERVICE_ENABLE_CARE_PLAN = "enable_care_plan"
 SERVICE_DISABLE_CARE_PLAN = "disable_care_plan"
 SERVICE_GENERATE_TASKS = "generate_tasks"
+SERVICE_PREVIEW_TASK_GENERATION = "preview_task_generation"
 SERVICE_RESOLVE_TASK = "resolve_task"
 SERVICE_LOG_EVENT = "log_event"
 SERVICE_GET_TASKS = "get_tasks"
 SERVICE_GET_TIMELINE = "get_timeline"
+SERVICE_SYSTEM_HEALTH = "system_health"
 
 _SERVICE_DATA = vol.Schema({}, extra=vol.ALLOW_EXTRA)
 
@@ -146,6 +153,13 @@ def async_register_services(hass: HomeAssistant) -> None:
     )
     hass.services.async_register(
         DOMAIN,
+        SERVICE_PREVIEW_TASK_GENERATION,
+        _async_handle_preview_task_generation,
+        schema=_SERVICE_DATA,
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
         SERVICE_RESOLVE_TASK,
         _async_handle_resolve_task,
         schema=_SERVICE_DATA,
@@ -172,6 +186,13 @@ def async_register_services(hass: HomeAssistant) -> None:
         schema=_SERVICE_DATA,
         supports_response=SupportsResponse.ONLY,
     )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SYSTEM_HEALTH,
+        _async_handle_system_health,
+        schema=_SERVICE_DATA,
+        supports_response=SupportsResponse.ONLY,
+    )
 
 
 def async_unregister_services(hass: HomeAssistant) -> None:
@@ -186,10 +207,12 @@ def async_unregister_services(hass: HomeAssistant) -> None:
         SERVICE_ENABLE_CARE_PLAN,
         SERVICE_DISABLE_CARE_PLAN,
         SERVICE_GENERATE_TASKS,
+        SERVICE_PREVIEW_TASK_GENERATION,
         SERVICE_RESOLVE_TASK,
         SERVICE_LOG_EVENT,
         SERVICE_GET_TASKS,
         SERVICE_GET_TIMELINE,
+        SERVICE_SYSTEM_HEALTH,
     ):
         if hass.services.has_service(DOMAIN, service):
             hass.services.async_remove(DOMAIN, service)
@@ -436,6 +459,50 @@ def _serialize_care_task(
     return data
 
 
+def _serialize_preview_task(task: CareTask) -> dict[str, Any]:
+    """Serialize a preview task without exposing a synthetic transient task ID."""
+    data = _serialize_care_task(task)
+    data.pop("task_id", None)
+    return data
+
+
+def _generation_parameters(
+    runtime: ReptileCareRuntimeData,
+    call: ServiceCall,
+) -> tuple[str | None, str | None, datetime, timedelta | None]:
+    reptile_id = (
+        _parse_reptile_identifier(runtime, call)
+        if _field_present(call, "reptile_id") or _field_present(call, "slug")
+        else None
+    )
+    care_plan_id = _optional_text(call, "care_plan_id")
+    if care_plan_id is not None:
+        try:
+            care_plan = runtime.care_plan_repository.get(care_plan_id)
+        except CarePlanError as err:
+            raise HomeAssistantError(str(err)) from err
+        if reptile_id is not None and care_plan.reptile_id != reptile_id:
+            raise HomeAssistantError(
+                f"care plan {care_plan_id} does not belong to reptile {reptile_id}"
+            )
+    look_ahead = (
+        _parse_timedelta(call.data["horizon_duration"], "horizon_duration")
+        if _field_present(call, "horizon_duration")
+        else None
+    )
+    now = (
+        _parse_datetime(call.data.get("now"), "now")
+        if _field_present(call, "now")
+        else datetime.now(UTC)
+    )
+    if _field_present(call, "horizon_end"):
+        horizon_end = _parse_datetime(call.data.get("horizon_end"), "horizon_end")
+        if horizon_end is None or horizon_end < now:
+            raise HomeAssistantError("horizon_end must not be earlier than now")
+        look_ahead = horizon_end - now
+    return reptile_id, care_plan_id, now, look_ahead
+
+
 def _serialize_event(event: CareEvent) -> dict[str, Any]:
     return {
         "event_id": str(event.event_id),
@@ -656,36 +723,7 @@ async def _async_handle_disable_care_plan(call: ServiceCall) -> dict[str, Any]:
 
 async def _async_handle_generate_tasks(call: ServiceCall) -> dict[str, Any]:
     runtime = _runtime(call.hass)
-    reptile_id = (
-        _parse_reptile_identifier(runtime, call)
-        if _field_present(call, "reptile_id") or _field_present(call, "slug")
-        else None
-    )
-    care_plan_id = _optional_text(call, "care_plan_id")
-    if care_plan_id is not None:
-        try:
-            care_plan = runtime.care_plan_repository.get(care_plan_id)
-        except CarePlanError as err:
-            raise HomeAssistantError(str(err)) from err
-        if reptile_id is not None and care_plan.reptile_id != reptile_id:
-            raise HomeAssistantError(
-                f"care plan {care_plan_id} does not belong to reptile {reptile_id}"
-            )
-    look_ahead = (
-        _parse_timedelta(call.data["horizon_duration"], "horizon_duration")
-        if _field_present(call, "horizon_duration")
-        else None
-    )
-    now = (
-        _parse_datetime(call.data.get("now"), "now")
-        if _field_present(call, "now")
-        else datetime.now(UTC)
-    )
-    if _field_present(call, "horizon_end"):
-        horizon_end = _parse_datetime(call.data.get("horizon_end"), "horizon_end")
-        if horizon_end is None or horizon_end < now:
-            raise HomeAssistantError("horizon_end must not be earlier than now")
-        look_ahead = horizon_end - now
+    reptile_id, care_plan_id, now, look_ahead = _generation_parameters(runtime, call)
     result = await runtime.care_task_generator.async_generate(
         now=now,
         look_ahead=look_ahead,
@@ -698,6 +736,30 @@ async def _async_handle_generate_tasks(call: ServiceCall) -> dict[str, Any]:
         "skipped_plan_ids": list(result.skipped_plan_ids),
         "warnings": list(result.warnings),
         "errors": dict(result.errors),
+    }
+
+
+async def _async_handle_preview_task_generation(call: ServiceCall) -> dict[str, Any]:
+    runtime = _runtime(call.hass)
+    reptile_id, care_plan_id, now, look_ahead = _generation_parameters(runtime, call)
+    result = await runtime.care_task_generator.async_preview(
+        now=now,
+        look_ahead=look_ahead,
+        reptile_id=reptile_id,
+        care_plan_id=care_plan_id,
+    )
+    warnings = list(result.warnings)
+    warnings.extend(
+        f"care plan {care_plan_id}: {message}"
+        for care_plan_id, message in result.errors.items()
+    )
+    return {
+        "would_create": [_serialize_preview_task(task) for task in result.would_create],
+        "already_exists": [
+            _serialize_care_task(task) for task in result.already_exists
+        ],
+        "skipped": list(result.skipped_plan_ids),
+        "warnings": warnings,
     }
 
 
@@ -830,3 +892,27 @@ async def _async_handle_get_timeline(call: ServiceCall) -> dict[str, Any]:
             raise HomeAssistantError("limit must be a positive integer")
         events = events[:limit]
     return {"events": [_serialize_event(event) for event in events]}
+
+
+async def _async_handle_system_health(call: ServiceCall) -> dict[str, Any]:
+    runtime = _runtime(call.hass)
+    _ = call
+    return {
+        "integration_version": INTEGRATION_VERSION,
+        "schema_version": {
+            "reptiles": REPTILE_SCHEMA_VERSION,
+            "care_plans": CARE_PLAN_SCHEMA_VERSION,
+            "care_tasks": CARE_TASK_SCHEMA_VERSION,
+            "care_events": f"{STORAGE_VERSION}.{STORAGE_MINOR_VERSION}",
+        },
+        "species_profile_count": len(runtime.species_profiles.all()),
+        "reptile_count": len(runtime.reptile_repository.all()),
+        "care_plan_count": len(runtime.care_plan_repository.all()),
+        "task_template_count": len(runtime.task_templates.all()),
+        "workflow_graph_count": len(runtime.workflow_graphs.all()),
+        "pending_task_count": len(runtime.care_task_repository.pending()),
+        "completed_task_count": len(
+            runtime.care_task_repository.for_status(CareTaskStatus.COMPLETED)
+        ),
+        "care_event_count": len(runtime.timeline.all_events()),
+    }

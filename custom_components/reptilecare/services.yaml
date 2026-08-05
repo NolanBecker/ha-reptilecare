@@ -240,6 +240,28 @@ generate_tasks:
     now:
       selector:
         datetime:
+preview_task_generation:
+  name: Preview task generation
+  description: Preview which care tasks would be created without persisting changes.
+  fields:
+    reptile_id:
+      selector:
+        text:
+    slug:
+      selector:
+        text:
+    care_plan_id:
+      selector:
+        text:
+    horizon_duration:
+      selector:
+        duration:
+    horizon_end:
+      selector:
+        datetime:
+    now:
+      selector:
+        datetime:
 resolve_task:
   name: Resolve task
   description: Complete, skip, or cancel one care task through the CareEngine.
@@ -389,3 +411,6 @@ get_timeline:
         number:
           min: 1
           mode: box
+system_health:
+  name: System health
+  description: Return ReptileCare runtime counts and version information.

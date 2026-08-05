@@ -32,8 +32,8 @@ The current foundation provides:
 - A deterministic CareEngine that resolves tasks, records CareEvents, evaluates
   workflows, and creates follow-up tasks
 - A Home Assistant service adapter for reptile management, care-plan
-  management, task generation, task resolution, manual event logging, and
-  read-only task and timeline queries
+  management, task generation and preview, task resolution, manual event
+  logging, runtime health diagnostics, and read-only task and timeline queries
 - A validated multi-reptile repository with immutable keeper-owned records
 - Separate, versioned persistence for reptiles and CareEvent history
 - Versioned persistent CareEvent history backed by Home Assistant storage

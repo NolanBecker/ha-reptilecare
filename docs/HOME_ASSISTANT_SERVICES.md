@@ -61,6 +61,18 @@ Returns:
 - `warnings`
 - `errors`
 
+### `reptilecare.preview_task_generation`
+
+Runs the same scheduling and validation path as `generate_tasks` without
+writing to repositories.
+
+Returns:
+
+- `would_create`
+- `already_exists`
+- `skipped`
+- `warnings`
+
 ### `reptilecare.resolve_task`
 
 ```yaml
@@ -118,6 +130,21 @@ Returns serialized tasks with derived `due_state` values. Supported filters:
 ### `reptilecare.get_timeline`
 
 Returns serialized immutable `CareEvent` records in chronological order.
+
+### `reptilecare.system_health`
+
+Returns a small diagnostic payload for automations and future dashboards:
+
+- `integration_version`
+- `schema_version`
+- `species_profile_count`
+- `reptile_count`
+- `care_plan_count`
+- `task_template_count`
+- `workflow_graph_count`
+- `pending_task_count`
+- `completed_task_count`
+- `care_event_count`
 
 ## Common Errors
 

@@ -18,6 +18,7 @@ from custom_components.reptilecare.domain.reptile import (
 from custom_components.reptilecare.domain.species import SpeciesProfileRegistry
 from custom_components.reptilecare.models import CareEvent, CareEventType
 from custom_components.reptilecare.services import (
+    _generation_parameters,
     _parse_date,
     _parse_datetime,
     _parse_reminder,
@@ -155,6 +156,30 @@ def test_parse_reptile_identifier_rules() -> None:
             _parse_reptile_identifier(
                 runtime,
                 SimpleNamespace(data={}),
+            )
+
+    import asyncio
+
+    asyncio.run(_run())
+
+
+def test_generation_parameters_reject_conflicting_reptile_and_plan() -> None:
+    """Generation parameter parsing rejects mismatched reptile and care-plan filters."""
+
+    async def _run() -> None:
+        runtime = await _reptile_runtime()
+        runtime.care_plan_repository = SimpleNamespace(
+            get=lambda _: SimpleNamespace(care_plan_id="plan-1", reptile_id="other-id")
+        )
+        with pytest.raises(Exception, match="does not belong to reptile"):
+            _generation_parameters(
+                runtime,
+                SimpleNamespace(
+                    data={
+                        "reptile_id": PIXEL_ID,
+                        "care_plan_id": "plan-1",
+                    }
+                ),
             )
 
     import asyncio
