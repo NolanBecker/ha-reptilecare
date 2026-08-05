@@ -262,13 +262,38 @@ def test_invalid_outcome_and_context_fail_clearly() -> None:
     asyncio.run(_run())
 
 
-def test_resolution_request_defaults_completed_at_when_omitted() -> None:
-    """Resolution requests may omit completed_at and still normalize to UTC."""
+def test_resolution_request_allows_omitted_completed_at() -> None:
+    """Resolution requests may omit completed_at until persistence time."""
 
     request = CareTaskResolutionRequest(action=ResolutionAction.SKIP, completed_at=None)
 
-    assert isinstance(request.completed_at, datetime)
-    assert request.completed_at.tzinfo is UTC
+    assert request.completed_at is None
+
+
+def test_omitted_completed_at_replays_identical_resolution() -> None:
+    """Omitting completed_at still preserves idempotent replay semantics."""
+
+    async def _run() -> None:
+        engine, _, event_store = await _build_engine(_feed_task())
+        request = CareTaskResolutionRequest(
+            action=ResolutionAction.COMPLETE,
+            outcome_id="ate_normally",
+            outcome_metadata={"food_used": "papaya", "quantity": 30},
+            notes="Ate normally",
+            source="test",
+            actor_id="keeper-1",
+            environmental_context={"temperature_f": 78},
+        )
+        first = await engine.async_resolve_task(TASK_ID, request)
+        second = await engine.async_resolve_task(TASK_ID, request)
+
+        assert first.task.completed_at is not None
+        assert not first.replayed_existing_result
+        assert second.replayed_existing_result
+        assert first.care_event.event_id == second.care_event.event_id
+        assert len(await event_store.async_list_events()) == 1
+
+    asyncio.run(_run())
 
 
 def test_skip_path_creates_event_without_follow_up() -> None:
