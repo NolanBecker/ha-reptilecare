@@ -641,6 +641,17 @@ class CareEngine:
         existing = await self._event_store.async_get_event(event_id)
         if existing is not None:
             return existing
+        context = {
+            "action": task.resolution_action.value
+            if task.resolution_action is not None
+            else task.status.value,
+            "notes": task.notes,
+            **(
+                {}
+                if task.outcome is None
+                else _to_json_compatible(task.outcome.metadata)
+            ),
+        }
         event = CareEvent(
             event_id=event_id,
             reptile_id=task.reptile_id,
@@ -649,17 +660,7 @@ class CareEngine:
             task_id=task.task_id,
             care_plan_id=task.care_plan_id,
             outcome_id=None if task.outcome is None else task.outcome.outcome_id,
-            context=MappingProxyType(
-                {
-                    "action": task.resolution_action.value
-                    if task.resolution_action is not None
-                    else task.status.value,
-                    "outcome_metadata": {}
-                    if task.outcome is None
-                    else _to_json_compatible(task.outcome.metadata),
-                    "notes": task.notes,
-                }
-            ),
+            context=MappingProxyType(context),
             actor_id=task.resolution_actor_id,
             source=task.resolution_source,
             environmental_snapshot=task.environmental_context,

@@ -170,6 +170,9 @@ def test_complete_feed_task_creates_event_and_follow_up() -> None:
         assert result.care_event.outcome_id == "ate_normally"
         assert result.care_event.actor_id == "keeper-1"
         assert result.care_event.source == "test"
+        assert result.care_event.context["food_used"] == "papaya"
+        assert result.care_event.context["quantity"] == 30
+        assert result.care_event.context["action"] == "complete"
         assert result.care_event.environmental_snapshot["temperature_f"] == 78
         assert len(result.created_follow_up_tasks) == 1
         follow_up = result.created_follow_up_tasks[0]
