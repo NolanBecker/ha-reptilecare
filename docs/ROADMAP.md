@@ -112,6 +112,15 @@ Phase 5 has now started with a first production-quality service layer for:
 
 Entities, dashboards, notifications, and broader UI still remain future work.
 
+The first entity milestone is now also complete:
+
+- one Home Assistant device per reptile
+- compact task-summary sensors
+- compact care-state binary sensors
+- a per-reptile generate-tasks button
+- dynamic entity discovery for reptiles created through services
+- recorder-friendly bounded attributes instead of one entity per task
+
 ### Phase 6 — Dashboard Cards
 
 Provide polished, reusable cards that enhance existing Home Assistant

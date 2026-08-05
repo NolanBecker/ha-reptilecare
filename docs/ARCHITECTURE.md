@@ -21,7 +21,7 @@ TaskTemplate ----------------> CarePlans --> CareTasks --> CareEngine --> CareEv
                                ↓
                   Home Assistant Services
                                ↓
-                   Future Home Assistant Entities
+                 Home Assistant Entity Projections
 ```
 
 This is a dependency direction, not merely a screen flow. Each layer has a
@@ -32,8 +32,9 @@ The [core domain design proposal](CORE_DOMAIN_DESIGN.md) extends these accepted
 boundaries with implementation-ready recommendations for `SpeciesProfile`,
 `TaskTemplate`, task outcomes, workflow-generated follow-ups, persistence, and
 Home Assistant adapters. The current implementation now covers persistent task
-generation, the first end-to-end CareEngine execution loop, and a thin Home
-Assistant service adapter over those capabilities.
+generation, the first end-to-end CareEngine execution loop, a thin Home
+Assistant service adapter over those capabilities, and compact per-reptile
+entity projections.
 
 ## Reptile
 
@@ -252,8 +253,30 @@ information, but it should not calculate those answers independently or persist
 its own copy of them. This keeps dashboards, services, and notifications
 consistent.
 
-The current foundation now implements Home Assistant services but still does
-not implement entities.
+The current foundation now implements Home Assistant services and compact
+per-reptile task-state entities.
+
+## Entity projections
+
+The entity layer is intentionally a projection layer, not a business-logic
+layer. `ReptileCareEntityProjection` reads existing repositories and `Timeline`
+queries to derive:
+
+- pending task counts
+- next actionable task
+- latest event summary
+- compact care-state flags
+
+The projection layer does not:
+
+- generate tasks
+- resolve tasks
+- evaluate workflows
+- write storage
+- recalculate schedules independently
+
+This keeps entity behavior aligned with the same repositories and due-state
+projection used by services and tests.
 
 ## Why state is derived
 

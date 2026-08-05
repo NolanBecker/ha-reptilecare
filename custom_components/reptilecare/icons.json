@@ -1,1 +1,31 @@
-{}
+{
+  "entity": {
+    "sensor": {
+      "pending_tasks": {
+        "default": "mdi:clipboard-text-clock-outline"
+      },
+      "next_task": {
+        "default": "mdi:clock-outline"
+      },
+      "last_event": {
+        "default": "mdi:history"
+      }
+    },
+    "binary_sensor": {
+      "care_due": {
+        "default": "mdi:clock-alert-outline"
+      },
+      "overdue_care": {
+        "default": "mdi:alert-circle-outline"
+      },
+      "pending_care": {
+        "default": "mdi:clipboard-list-outline"
+      }
+    },
+    "button": {
+      "generate_tasks": {
+        "default": "mdi:playlist-plus"
+      }
+    }
+  }
+}

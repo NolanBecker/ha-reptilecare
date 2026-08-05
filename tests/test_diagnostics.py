@@ -10,7 +10,7 @@ from custom_components.reptilecare.diagnostics import (
 
 
 async def test_diagnostics(hass: HomeAssistant) -> None:
-    """Test diagnostics contain only scaffold metadata."""
+    """Diagnostics expose bounded runtime and projection metadata."""
     entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
@@ -25,5 +25,15 @@ async def test_diagnostics(hass: HomeAssistant) -> None:
             "event_count": 0,
             "reptile_count": 0,
             "event_storage": "HomeAssistantCareEventStore",
+            "entity_projection": {
+                "entity_count_by_platform": {
+                    "sensor": 0,
+                    "binary_sensor": 0,
+                    "button": 0,
+                },
+                "pending_task_counts": {},
+                "overdue_task_counts": {},
+                "projection_warnings": {},
+            },
         },
     }

@@ -11,9 +11,10 @@ experience is centered on CareTasks: clear actions that tell keepers what each
 reptile needs today.
 
 > [!NOTE]
-> ReptileCare currently provides domain, persistence, CareTask generation, and
-> CareEngine execution foundations, plus a first Home Assistant service API. It
-> does not yet expose reptile management UI, entities, or notifications.
+> ReptileCare currently provides domain, persistence, CareTask generation,
+> CareEngine execution, Home Assistant services, and the first per-reptile
+> entity layer. It does not yet expose reptile management UI, notifications, or
+> custom dashboard surfaces.
 
 ## Features
 
@@ -34,11 +35,14 @@ The current foundation provides:
 - A Home Assistant service adapter for reptile management, care-plan
   management, task generation and preview, task resolution, manual event
   logging, runtime health diagnostics, and read-only task and timeline queries
+- Per-reptile Home Assistant devices with compact care-summary sensors, binary
+  sensors, and a task-generation button
 - A validated multi-reptile repository with immutable keeper-owned records
 - Separate, versioned persistence for reptiles and CareEvent history
 - Versioned persistent CareEvent history backed by Home Assistant storage
 - Reusable timeline queries for chronological history and filtering
-- Downloadable diagnostics containing non-sensitive scaffold metadata
+- Downloadable diagnostics containing non-sensitive runtime and entity
+  projection metadata
 
 Planned feature modules include feeding, cleaning, weight, shedding, health,
 notes, photos, and environmental tracking. Schedules, reminders, dashboards,
@@ -101,8 +105,7 @@ Future Home Assistant entities
 
 The `CareEventStore` and `ReptilePersistence` protocols keep persistence behind
 narrow boundaries. The canonical `CareEventType` enum provides a stable
-vocabulary for future feature modules. No feeding schedules, care projections,
-or Home Assistant entities are implemented at this milestone.
+vocabulary for future feature modules.
 
 The product architecture will build from Reptiles to CarePlans, then CareTasks.
 Completing a CareTask records an immutable CareEvent; Timeline and Coordinator
@@ -125,7 +128,8 @@ The CareTask and CareEngine foundations now generate bounded, persistent,
 idempotent task occurrences from enabled CarePlans during startup, resolve
 terminal CareTask outcomes into immutable CareEvents, evaluate reusable
 workflow graphs, and create deterministic follow-up tasks. Home Assistant
-services, notifications, and UI adapters remain future work.
+services and the first per-reptile entity adapters sit on top of those domain
+and application layers. Notifications and richer UI remain future work.
 
 ## Project documentation
 
@@ -148,6 +152,8 @@ services, notifications, and UI adapters remain future work.
   evaluation, follow-up generation, and restart reconciliation
 - [Home Assistant services](docs/HOME_ASSISTANT_SERVICES.md) — service
   contracts, identifiers, responses, and examples
+- [Entities](docs/ENTITIES.md) — reptile devices, summary sensors, binary
+  sensors, buttons, and projection behavior
 - [Reptiles](docs/REPTILES.md) — individual-animal ownership, overrides,
   repository behavior, persistence, and archival policy
 - [UX principles](docs/UX_PRINCIPLES.md) — standards for a calm, care-first
@@ -164,7 +170,7 @@ services, notifications, and UI adapters remain future work.
 - Maintain the Home Assistant lifecycle and event/storage foundation
 - Add multi-reptile profile management
 - Define CarePlans and generate user-facing CareTasks
-- Expose stable Home Assistant services
+- Expose stable Home Assistant services and first dashboard-safe entities
 - Build reusable dashboard cards and the future ReptileCare Center
 - Add actionable notifications and derived statistics
 - Support structured health observations, photos, and growth tracking
