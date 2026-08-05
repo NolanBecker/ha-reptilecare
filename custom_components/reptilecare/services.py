@@ -220,6 +220,10 @@ def async_unregister_services(hass: HomeAssistant) -> None:
 
 
 def _runtime(hass: HomeAssistant) -> ReptileCareRuntimeData:
+    return _runtime_entry(hass).runtime_data
+
+
+def _runtime_entry(hass: HomeAssistant):
     entries = [
         entry
         for entry in hass.config_entries.async_entries(DOMAIN)
@@ -229,7 +233,7 @@ def _runtime(hass: HomeAssistant) -> ReptileCareRuntimeData:
         raise HomeAssistantError("ReptileCare is not set up")
     if len(entries) != 1:
         raise HomeAssistantError("ReptileCare requires exactly one active config entry")
-    return cast("ReptileCareRuntimeData", entries[0].runtime_data)
+    return entries[0]
 
 
 def _actor_id(call: ServiceCall) -> str | None:
@@ -524,6 +528,7 @@ def _serialize_event(event: CareEvent) -> dict[str, Any]:
 
 async def _async_handle_create_reptile(call: ServiceCall) -> dict[str, Any]:
     runtime = _runtime(call.hass)
+    entry = _runtime_entry(call.hass)
     try:
         sex = None
         if _field_present(call, "sex") and call.data.get("sex") is not None:
@@ -551,6 +556,7 @@ async def _async_handle_create_reptile(call: ServiceCall) -> dict[str, Any]:
     ) as err:
         raise HomeAssistantError(str(err)) from err
     async_notify_runtime_updated(call.hass)
+    await call.hass.config_entries.async_reload(entry.entry_id)
     return {"reptile": _serialize_reptile(reptile)}
 
 

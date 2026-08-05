@@ -655,6 +655,11 @@ class CareEngine:
                     if task.outcome is None
                     else _to_json_compatible(task.outcome.metadata),
                     "notes": task.notes,
+                    **(
+                        {}
+                        if task.outcome is None
+                        else _to_json_compatible(task.outcome.metadata)
+                    ),
                 }
             ),
             actor_id=task.resolution_actor_id,
