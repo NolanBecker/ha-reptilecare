@@ -40,6 +40,8 @@ async def test_setup_and_unload_entry(hass: HomeAssistant) -> None:
     assert entry.runtime_data.care_plan_repository.all() == ()
     assert entry.runtime_data.care_task_repository.all() == ()
     assert entry.runtime_data.reptile_repository.all() == ()
+    assert entry.runtime_data.workflow_evaluator is not None
+    assert entry.runtime_data.care_engine is not None
 
     event = CareEvent(reptile_id=PIXEL_ID, event_type=CareEventType.FEEDING)
     snapshot = ReptileCareSnapshot(events=(event,))
@@ -62,6 +64,8 @@ async def test_reload_rebuilds_species_registry(hass: HomeAssistant) -> None:
     original_workflows = entry.runtime_data.workflow_graphs
     original_care_plans = entry.runtime_data.care_plan_repository
     original_tasks = entry.runtime_data.care_task_repository
+    original_evaluator = entry.runtime_data.workflow_evaluator
+    original_engine = entry.runtime_data.care_engine
     pixel = Reptile(
         reptile_id=PIXEL_ID,
         display_name="Pixel",
@@ -77,6 +81,8 @@ async def test_reload_rebuilds_species_registry(hass: HomeAssistant) -> None:
     assert entry.runtime_data.workflow_graphs is not original_workflows
     assert entry.runtime_data.care_plan_repository is not original_care_plans
     assert entry.runtime_data.care_task_repository is not original_tasks
+    assert entry.runtime_data.workflow_evaluator is not original_evaluator
+    assert entry.runtime_data.care_engine is not original_engine
     assert entry.runtime_data.reptile_repository.get(PIXEL_ID) == pixel
     assert entry.runtime_data.species_profiles.contains("builtin:gargoyle_gecko")
     assert entry.runtime_data.task_templates.contains("builtin:feed_fruit")
@@ -85,13 +91,19 @@ async def test_reload_rebuilds_species_registry(hass: HomeAssistant) -> None:
     assert entry.runtime_data.care_task_repository.all() == ()
 
 
-async def test_setup_runs_startup_task_generation(
+async def test_setup_runs_reconciliation_before_task_generation(
     hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Setup performs one bounded CareTask generation pass."""
+    """Setup reconciles persisted care operations before generating new tasks."""
     from custom_components.reptilecare import CareTaskGenerator
+    from custom_components.reptilecare.application import CareEngine
 
+    steps: list[str] = []
     calls: list[datetime] = []
+
+    async def _reconcile(self: CareEngine) -> tuple[str, ...]:
+        steps.append("reconcile")
+        return ()
 
     async def _generate(
         self: CareTaskGenerator,
@@ -99,15 +111,18 @@ async def test_setup_runs_startup_task_generation(
         now: datetime,
         **_: object,
     ) -> TaskGenerationResult:
+        steps.append("generate")
         calls.append(now)
         return TaskGenerationResult()
 
+    monkeypatch.setattr(CareEngine, "async_reconcile_pending_operations", _reconcile)
     monkeypatch.setattr(CareTaskGenerator, "async_generate", _generate)
 
     entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
+    assert steps == ["reconcile", "generate"]
     assert len(calls) == 1
     assert calls[0].tzinfo is not None
 
@@ -203,6 +218,22 @@ async def test_care_plan_repository_load_failure_fails_setup(
         await async_setup_entry(hass, entry)
 
 
+async def test_care_task_repository_load_failure_fails_setup(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CareTask persistence load failures surface as config-entry errors."""
+    from custom_components.reptilecare import CareTaskRepository, async_setup_entry
+    from custom_components.reptilecare.domain.care_task import CareTaskError
+
+    async def _raise_care_task_error(self: CareTaskRepository) -> None:
+        raise CareTaskError("unable to load care tasks")
+
+    monkeypatch.setattr(CareTaskRepository, "async_load", _raise_care_task_error)
+    entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
+    with pytest.raises(ConfigEntryError, match="load ReptileCare care tasks"):
+        await async_setup_entry(hass, entry)
+
+
 async def test_platform_forwarding_and_unload_paths(
     hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -248,6 +279,77 @@ async def test_platform_forwarding_and_unload_paths(
     assert forwarded == [(entry.entry_id, ("sensor",))]
     assert await async_unload_entry(hass, entry) is False
     assert unloaded == [(entry.entry_id, ("sensor",))]
+
+
+async def test_setup_falls_back_to_async_refresh_for_direct_invocation(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Direct setup calls fall back to plain refresh outside HA setup state."""
+    from custom_components.reptilecare import async_setup_entry
+    from custom_components.reptilecare.coordinator import ReptileCareCoordinator
+
+    entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
+    calls: list[str] = []
+
+    async def _first_refresh(self: ReptileCareCoordinator) -> None:
+        calls.append("first_refresh")
+        raise ConfigEntryError(
+            "`async_config_entry_first_refresh` called when config entry state is "
+            "ConfigEntryState.NOT_LOADED"
+        )
+
+    async def _refresh(self: ReptileCareCoordinator) -> None:
+        calls.append("refresh")
+
+    monkeypatch.setattr(
+        ReptileCareCoordinator, "async_config_entry_first_refresh", _first_refresh
+    )
+    monkeypatch.setattr(ReptileCareCoordinator, "async_refresh", _refresh)
+
+    assert await async_setup_entry(hass, entry)
+    assert calls == ["first_refresh", "refresh"]
+
+
+async def test_setup_logs_generation_warnings(
+    hass: HomeAssistant,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Setup logs bounded generation warnings without failing startup."""
+    from custom_components.reptilecare import CareTaskGenerator, async_setup_entry
+
+    async def _generate(
+        self: CareTaskGenerator,
+        *,
+        now: datetime,
+        **_: object,
+    ) -> TaskGenerationResult:
+        return TaskGenerationResult(errors={PIXEL_ID: "missing template"})
+
+    monkeypatch.setattr(CareTaskGenerator, "async_generate", _generate)
+
+    entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
+    assert await async_setup_entry(hass, entry)
+    assert "CareTask generation skipped plan" in caplog.text
+
+
+async def test_setup_reraises_unexpected_first_refresh_error(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Non-state refresh failures are not swallowed by the direct-call fallback."""
+    from custom_components.reptilecare import async_setup_entry
+    from custom_components.reptilecare.coordinator import ReptileCareCoordinator
+
+    async def _first_refresh(self: ReptileCareCoordinator) -> None:
+        raise ConfigEntryError("coordinator exploded unexpectedly")
+
+    monkeypatch.setattr(
+        ReptileCareCoordinator, "async_config_entry_first_refresh", _first_refresh
+    )
+
+    entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
+    with pytest.raises(ConfigEntryError, match="unexpectedly"):
+        await async_setup_entry(hass, entry)
 
 
 async def test_reload_listener_delegates_to_config_entries(

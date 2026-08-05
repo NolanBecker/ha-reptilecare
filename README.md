@@ -11,9 +11,9 @@ experience is centered on CareTasks: clear actions that tell keepers what each
 reptile needs today.
 
 > [!NOTE]
-> ReptileCare currently provides domain, persistence, and CareTask-generation
-> foundations. It does not yet expose reptile management UI, task-completion
-> services, entities, or notifications.
+> ReptileCare currently provides domain, persistence, CareTask generation, and
+> CareEngine execution foundations. It does not yet expose reptile management
+> UI, Home Assistant task-resolution services, entities, or notifications.
 
 ## Features
 
@@ -29,6 +29,8 @@ The current foundation provides:
 - A versioned care-plan domain model and persistent care plan repository
 - A persistent CareTask model, repository, due-state projection, and startup
   generation service
+- A deterministic CareEngine that resolves tasks, records CareEvents, evaluates
+  workflows, and creates follow-up tasks
 - A validated multi-reptile repository with immutable keeper-owned records
 - Separate, versioned persistence for reptiles and CareEvent history
 - Versioned persistent CareEvent history backed by Home Assistant storage
@@ -116,10 +118,11 @@ Keeper-owned `CarePlan` definitions now connect one reptile to one reusable
 task template and one reusable workflow graph with descriptive schedule and
 reminder configuration.
 
-The CareTask foundation now generates bounded, persistent, idempotent task
-occurrences from enabled CarePlans during startup, while intentionally
-deferring completion, workflow execution, notifications, and Home Assistant
-services.
+The CareTask and CareEngine foundations now generate bounded, persistent,
+idempotent task occurrences from enabled CarePlans during startup, resolve
+terminal CareTask outcomes into immutable CareEvents, evaluate reusable
+workflow graphs, and create deterministic follow-up tasks. Home Assistant
+services, notifications, and UI adapters remain future work.
 
 ## Project documentation
 
@@ -138,6 +141,8 @@ services.
   abstraction, persistence, and repository behavior
 - [Care tasks](docs/CARE_TASKS.md) — generated operational work, idempotency,
   startup reconciliation, and due-state projection
+- [Care engine](docs/CARE_ENGINE.md) — task resolution lifecycle, workflow
+  evaluation, follow-up generation, and restart reconciliation
 - [Reptiles](docs/REPTILES.md) — individual-animal ownership, overrides,
   repository behavior, persistence, and archival policy
 - [UX principles](docs/UX_PRINCIPLES.md) — standards for a calm, care-first

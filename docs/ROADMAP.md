@@ -74,14 +74,21 @@ Turn CarePlans into concrete, user-facing actions.
 CareTasks are the primary interaction model. CareEvents remain the audit log
 behind task completion.
 
-This phase should consume `WorkflowGraph` definitions through a future
-`TaskWorkflowService` rather than embedding workflow execution into templates or
-entities directly.
+This phase should consume `WorkflowGraph` definitions through an application
+service rather than embedding workflow execution into templates or entities
+directly.
 
 The first CareTask foundation now exists: persistent task identity,
 deterministic generation, startup reconciliation, and derived due-state
-projection. Completion, follow-up execution, entities, and services remain
-future Phase 4 and Phase 5 work.
+projection.
+
+The CareEngine execution loop now also exists: terminal task resolution,
+TaskOutcome validation, immutable CareEvent creation, pure workflow
+evaluation, deterministic follow-up task generation, and restart
+reconciliation.
+
+Home Assistant task-resolution services, entities, notifications, and broader
+UI surfaces remain future Phase 4 and Phase 5 work.
 
 ### Phase 5 — Home Assistant Services
 

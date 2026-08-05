@@ -308,6 +308,7 @@ class CareTaskGenerator:
         created_at: datetime,
     ) -> CareTask:
         occurrence_time = self._aware_utc(occurrence, "occurrence")
+        workflow = self._workflow_graphs.get(care_plan.workflow_id)
         return CareTask(
             reptile_id=reptile.reptile_id,
             care_plan_id=care_plan.care_plan_id,
@@ -320,6 +321,7 @@ class CareTaskGenerator:
                 f"care_plan:{care_plan.care_plan_id}:v{care_plan.plan_version}"
             ),
             workflow_chain_id=self._build_workflow_chain_id(care_plan, occurrence_time),
+            workflow_node_id=workflow.start_node,
             generation_reason=generation_reason,
         )
 

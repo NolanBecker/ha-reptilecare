@@ -53,6 +53,22 @@ def test_event_rejects_naive_timestamp() -> None:
         )
 
 
+def test_event_rejects_empty_optional_fields_and_bad_attachments() -> None:
+    """Optional event fields must be non-empty when provided."""
+    with pytest.raises(ValueError, match="source must not be empty"):
+        CareEvent(
+            reptile_id="pixel",
+            event_type=CareEventType.FEEDING,
+            source=" ",
+        )
+    with pytest.raises(ValueError, match="attachment_references must contain"):
+        CareEvent(
+            reptile_id="pixel",
+            event_type=CareEventType.FEEDING,
+            attachment_references=("ok", ""),
+        )
+
+
 def test_reptile_model_uses_species_profile_identity() -> None:
     """Test the shared model import uses permanent SpeciesProfile identity."""
     pixel = Reptile(

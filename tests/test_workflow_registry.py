@@ -66,12 +66,10 @@ def test_builtin_registry_loads_feeding_cycle() -> None:
         "complete_workflow",
         "create_next_feeding_task",
         "create_remove_food_task",
-        "record_feeding_event",
         "start",
-        "wait_before_cleanup",
     ]
     delayed = [transition for transition in workflow.transitions if transition.delay]
-    assert len(delayed) == 1
+    assert len(delayed) == 2
     assert delayed[0].delay is not None
     assert delayed[0].delay.amount == 24
     assert delayed[0].delay.unit.value == "hours"

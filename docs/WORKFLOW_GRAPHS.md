@@ -19,8 +19,10 @@ Workflow Graphs prepare ReptileCare for future:
 - automation targeting
 - service APIs
 
-This branch defines the workflow language only. A future
-`TaskWorkflowService` will interpret these graphs and perform execution later.
+This branch defines the workflow language and now ships the first pure
+`WorkflowEvaluator` plus `CareEngine` execution loop. Graphs still remain
+descriptive definitions; they do not persist or schedule anything by
+themselves.
 
 ## Current lifecycle
 
@@ -95,26 +97,25 @@ This branch includes one bundled built-in graph:
 
 - `builtin:feeding_cycle`
 
-It models a successful fruit-feeding flow:
+It models the current built-in feeding cycle:
 
 ```mermaid
 flowchart LR
     Start([Feed Fruit Outcome])
-    Event[Create CareEvent]
-    Wait[Delay 24 Hours]
     Remove[Create Remove Food Task]
     Next[Create Next Feeding Task]
     End([Complete Workflow])
 
-    Start -->|outcome_selected: ate_normally| Event
-    Event -->|task_completed| Wait
-    Wait -->|timeout_elapsed| Remove
+    Start -->|ate_normally / ate_partially + 24h delay| Remove
+    Start -->|refused / skipped / cancelled| End
     Remove -->|task_completed| Next
+    Remove -->|skipped / cancelled| End
     Next -->|task_completed| End
 ```
 
-This graph is descriptive only. It does not create tasks, record events, or
-schedule anything at runtime today.
+Primary CareEvents are now created by `CareEngine` from task-template metadata.
+The workflow graph is responsible for declarative follow-up behavior, not for
+inferring event types from display names.
 
 ## Relationship to Task Templates
 
@@ -158,4 +159,6 @@ execution layers to consume.
 - deterministic ordering
 - explicit lookup behavior
 
-It does not evaluate conditions, execute actions, or schedule follow-up work.
+It does not persist data, call Home Assistant, or schedule follow-up work on
+its own. `WorkflowEvaluator` consumes these validated graphs and returns typed
+effects for `CareEngine` to apply.

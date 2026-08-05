@@ -28,8 +28,8 @@ Home Assistant presentation details.
 - All durable identifiers are stable and opaque. `reptile_id` remains the name
   of the individual-animal identifier.
 - Domain behavior should be testable without a running Home Assistant instance.
-- The smallest sufficient model is preferred; orchestration belongs in a
-  workflow service rather than in domain records.
+- The smallest sufficient model is preferred; orchestration belongs in an
+  application-layer workflow service rather than in domain records.
 
 ## Model categories
 
@@ -358,7 +358,7 @@ rules.
 sequenceDiagram
     actor Keeper
     participant UI as Reusable card or ReptileCare Center
-    participant Workflow as Task workflow service
+    participant Workflow as CareEngine
     participant Tasks as CareTask store
     participant Events as CareEventStore
     participant Timeline
@@ -378,8 +378,9 @@ sequenceDiagram
 
 The event append and follow-up creation require a recoverable unit-of-work
 strategy. If Home Assistant storage cannot provide a multi-record transaction,
-the workflow must be restart-safe: persist the terminal task transition and
-idempotency key, then reconcile missing event or follow-up records on startup.
+the workflow service must be restart-safe: persist the terminal task
+transition and idempotency key, then reconcile missing event or follow-up
+records on startup.
 
 ## Persistence boundaries
 
@@ -459,13 +460,13 @@ user lookup, entity resolution, and lifecycle behavior.
 Keep species knowledge (`SpeciesProfile`, shared `TaskTemplate`) separate from
 keeper configuration (`Reptile`, `CarePlan`), operational state (`CareTask`),
 completion context (`TaskOutcome`), immutable history (`CareEvent`), and read
-queries (`Timeline`). Add a stateless `TaskWorkflowService` application boundary
-to execute transitions and follow-up rules against store protocols.
+queries (`Timeline`). Add a stateless application boundary to execute
+transitions and follow-up rules against store protocols.
 
 ### Class and enum names
 
 - Classes: `SpeciesProfile`, `Reptile`, `CarePlan`, `TaskTemplate`, `CareTask`,
-  `TaskOutcome`, `CareEvent`, `Timeline`, `TaskWorkflowService`
+  `TaskOutcome`, `CareEvent`, `Timeline`, `CareEngine`
 - Enums: `CareTaskStatus`, `CareEventType`, `TaskTriggerType`,
   `CareEventSource`, and a small `Sex` enum if product language is agreed
 - Rule values: `OutcomeDefinition`, `ContextFieldDefinition`, `FollowUpRule`

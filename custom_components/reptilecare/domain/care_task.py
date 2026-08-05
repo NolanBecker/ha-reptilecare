@@ -8,16 +8,24 @@ from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 import math
+import re
 from types import MappingProxyType
 from typing import Any, Protocol
 from uuid import UUID, uuid4
 
 from .care_plan import CarePlanNotFoundError, CarePlanRepository
 from .reptile import ReptileNotFoundError, ReptileRepository
+from .task_outcome import (
+    InvalidTaskOutcomeError,
+    TaskOutcome,
+    task_outcome_from_dict,
+    task_outcome_to_dict,
+)
 from .task_template import TaskTemplateNotFoundError, TaskTemplateRegistry
 from .workflow import WorkflowNotFoundError, WorkflowRegistry
 
-CARE_TASK_SCHEMA_VERSION = 1
+CARE_TASK_SCHEMA_VERSION = 2
+_LOCAL_ID = re.compile(r"^[a-z][a-z0-9_]*$")
 
 
 class CareTaskError(Exception):
@@ -63,6 +71,14 @@ class CareTaskStatus(StrEnum):
     COMPLETED = "completed"
     SKIPPED = "skipped"
     CANCELLED = "cancelled"
+
+
+class CareTaskResolutionAction(StrEnum):
+    """Explicit terminal actions accepted by the CareEngine."""
+
+    COMPLETE = "complete"
+    SKIP = "skip"
+    CANCEL = "cancel"
 
 
 class CareTaskGenerationReason(StrEnum):
@@ -186,14 +202,23 @@ class CareTask:
     status: CareTaskStatus = CareTaskStatus.PENDING
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     completed_at: datetime | None = None
-    outcome: str | None = None
+    outcome: TaskOutcome | None = None
     notes: str | None = None
     attachment_references: tuple[str, ...] = ()
     generated_by: str | None = None
     parent_task_id: str | None = None
     workflow_chain_id: str | None = None
+    workflow_node_id: str | None = None
     snoozed_until: datetime | None = None
     assigned_user_id: str | None = None
+    resolution_action: CareTaskResolutionAction | None = None
+    resolution_actor_id: str | None = None
+    resolution_source: str | None = None
+    environmental_context: Mapping[str, Any] = field(
+        default_factory=lambda: MappingProxyType({})
+    )
+    resolution_key: str | None = None
+    resolution_reconciled_at: datetime | None = None
     generation_reason: CareTaskGenerationReason = (
         CareTaskGenerationReason.RECURRING_CARE_PLAN
     )
@@ -241,14 +266,6 @@ class CareTask:
         snoozed_until = _optional_aware_utc_datetime(
             self.snoozed_until, "snoozed_until"
         )
-        if completed_at is not None and status is CareTaskStatus.PENDING:
-            raise InvalidCareTaskError(
-                "completed_at must be unset while task status is pending"
-            )
-        if completed_at is None and status is not CareTaskStatus.PENDING:
-            raise InvalidCareTaskError(
-                "completed_at is required for terminal task statuses"
-            )
 
         attachment_references = tuple(
             _text(value, "attachment_reference") for value in self.attachment_references
@@ -267,6 +284,79 @@ class CareTask:
                 UUID(workflow_chain_id)
             except ValueError as err:
                 raise InvalidCareTaskError("workflow_chain_id must be a UUID") from err
+        workflow_node_id = _optional_text(self.workflow_node_id, "workflow_node_id")
+        if (
+            workflow_node_id is not None
+            and _LOCAL_ID.fullmatch(workflow_node_id) is None
+        ):
+            raise InvalidCareTaskError(
+                "workflow_node_id must be a lowercase identifier"
+            )
+
+        resolution_action = None
+        if self.resolution_action is not None:
+            try:
+                resolution_action = CareTaskResolutionAction(self.resolution_action)
+            except (TypeError, ValueError) as err:
+                raise InvalidCareTaskError("resolution_action is invalid") from err
+
+        if self.outcome is None:
+            outcome = None
+        elif isinstance(self.outcome, TaskOutcome):
+            outcome = self.outcome
+        else:
+            raise InvalidCareTaskError("outcome has an invalid type")
+
+        environmental_context = _json_value(
+            self.environmental_context, "environmental_context"
+        )
+        if not isinstance(environmental_context, Mapping):
+            raise InvalidCareTaskError("environmental_context must be an object")
+        resolution_key = _optional_text(self.resolution_key, "resolution_key")
+        resolution_reconciled_at = _optional_aware_utc_datetime(
+            self.resolution_reconciled_at,
+            "resolution_reconciled_at",
+        )
+
+        if status is CareTaskStatus.PENDING:
+            if completed_at is not None:
+                raise InvalidCareTaskError(
+                    "completed_at must be unset while task status is pending"
+                )
+            if resolution_action is not None:
+                raise InvalidCareTaskError(
+                    "resolution_action must be unset while task status is pending"
+                )
+            if resolution_key is not None:
+                raise InvalidCareTaskError(
+                    "resolution_key must be unset while task status is pending"
+                )
+            if resolution_reconciled_at is not None:
+                raise InvalidCareTaskError(
+                    "resolution_reconciled_at must be unset "
+                    "while task status is pending"
+                )
+        else:
+            if completed_at is None:
+                raise InvalidCareTaskError(
+                    "completed_at is required for terminal task statuses"
+                )
+            if resolution_reconciled_at is not None and resolution_key is None:
+                raise InvalidCareTaskError(
+                    "resolution_key is required when resolution_reconciled_at is set"
+                )
+            expected_action = {
+                CareTaskStatus.COMPLETED: CareTaskResolutionAction.COMPLETE,
+                CareTaskStatus.SKIPPED: CareTaskResolutionAction.SKIP,
+                CareTaskStatus.CANCELLED: CareTaskResolutionAction.CANCEL,
+            }[status]
+            if (
+                resolution_action is not None
+                and resolution_action is not expected_action
+            ):
+                raise InvalidCareTaskError(
+                    "resolution_action does not match task status"
+                )
 
         object.__setattr__(self, "task_id", task_id)
         object.__setattr__(self, "status", status)
@@ -275,17 +365,36 @@ class CareTask:
         object.__setattr__(self, "due_at", due_at)
         object.__setattr__(self, "completed_at", completed_at)
         object.__setattr__(self, "snoozed_until", snoozed_until)
-        object.__setattr__(self, "outcome", _optional_text(self.outcome, "outcome"))
+        object.__setattr__(self, "outcome", outcome)
         object.__setattr__(self, "notes", _optional_text(self.notes, "notes"))
         object.__setattr__(
             self, "generated_by", _optional_text(self.generated_by, "generated_by")
         )
         object.__setattr__(self, "parent_task_id", parent_task_id)
         object.__setattr__(self, "workflow_chain_id", workflow_chain_id)
+        object.__setattr__(self, "workflow_node_id", workflow_node_id)
         object.__setattr__(
             self,
             "assigned_user_id",
             _optional_text(self.assigned_user_id, "assigned_user_id"),
+        )
+        object.__setattr__(self, "resolution_action", resolution_action)
+        object.__setattr__(
+            self,
+            "resolution_actor_id",
+            _optional_text(self.resolution_actor_id, "resolution_actor_id"),
+        )
+        object.__setattr__(
+            self,
+            "resolution_source",
+            _optional_text(self.resolution_source, "resolution_source"),
+        )
+        object.__setattr__(self, "environmental_context", environmental_context)
+        object.__setattr__(self, "resolution_key", resolution_key)
+        object.__setattr__(
+            self,
+            "resolution_reconciled_at",
+            resolution_reconciled_at,
         )
         object.__setattr__(self, "attachment_references", attachment_references)
 
@@ -393,6 +502,13 @@ class CareTaskRepository:
                 self.get(task_id),
                 status=CareTaskStatus.PENDING,
                 completed_at=None,
+                outcome=None,
+                resolution_action=None,
+                resolution_actor_id=None,
+                resolution_source=None,
+                environmental_context=MappingProxyType({}),
+                resolution_key=None,
+                resolution_reconciled_at=None,
             )
         )
 
@@ -404,6 +520,9 @@ class CareTaskRepository:
                 task,
                 status=CareTaskStatus.CANCELLED,
                 completed_at=datetime.now(UTC),
+                outcome=None,
+                resolution_action=CareTaskResolutionAction.CANCEL,
+                resolution_source="repository_disable",
             )
         )
 
@@ -452,6 +571,16 @@ class CareTaskRepository:
     def pending(self) -> tuple[CareTask, ...]:
         """List pending tasks."""
         return self.for_status(CareTaskStatus.PENDING)
+
+    def unresolved_operations(self) -> tuple[CareTask, ...]:
+        """List terminal tasks with persisted work that still needs reconciliation."""
+        return tuple(
+            task
+            for task in self._tasks.values()
+            if task.status is not CareTaskStatus.PENDING
+            and task.resolution_key is not None
+            and task.resolution_reconciled_at is None
+        )
 
     def due_between(self, start: datetime, end: datetime) -> tuple[CareTask, ...]:
         """List tasks whose due time falls in the inclusive UTC interval."""
@@ -552,8 +681,15 @@ _CARE_TASK_REQUIRED_KEYS = frozenset(
         "generated_by",
         "parent_task_id",
         "workflow_chain_id",
+        "workflow_node_id",
         "snoozed_until",
         "assigned_user_id",
+        "resolution_action",
+        "resolution_actor_id",
+        "resolution_source",
+        "environmental_context",
+        "resolution_key",
+        "resolution_reconciled_at",
         "generation_key",
         "generation_reason",
         "schema_version",
@@ -575,16 +711,27 @@ def care_task_to_dict(task: CareTask) -> dict[str, Any]:
         "completed_at": None
         if task.completed_at is None
         else task.completed_at.isoformat(),
-        "outcome": task.outcome,
+        "outcome": None if task.outcome is None else task_outcome_to_dict(task.outcome),
         "notes": task.notes,
         "attachment_references": list(task.attachment_references),
         "generated_by": task.generated_by,
         "parent_task_id": task.parent_task_id,
         "workflow_chain_id": task.workflow_chain_id,
+        "workflow_node_id": task.workflow_node_id,
         "snoozed_until": None
         if task.snoozed_until is None
         else task.snoozed_until.isoformat(),
         "assigned_user_id": task.assigned_user_id,
+        "resolution_action": None
+        if task.resolution_action is None
+        else task.resolution_action.value,
+        "resolution_actor_id": task.resolution_actor_id,
+        "resolution_source": task.resolution_source,
+        "environmental_context": _to_json_compatible(task.environmental_context),
+        "resolution_key": task.resolution_key,
+        "resolution_reconciled_at": None
+        if task.resolution_reconciled_at is None
+        else task.resolution_reconciled_at.isoformat(),
         "generation_key": task.generation_key,
         "generation_reason": task.generation_reason.value,
         "schema_version": task.schema_version,
@@ -594,14 +741,32 @@ def care_task_to_dict(task: CareTask) -> dict[str, Any]:
 def care_task_from_dict(value: Mapping[str, Any]) -> CareTask:
     """Deserialize and strictly validate a serialized CareTask."""
     data = _mapping(value, "care task")
+    schema_version = data.get("schema_version")
+    if schema_version not in {1, CARE_TASK_SCHEMA_VERSION}:
+        raise InvalidCareTaskError(f"unsupported schema version: {schema_version!r}")
+    if schema_version == 1:
+        data = dict(data)
+        data.setdefault("workflow_node_id", None)
+        data.setdefault("resolution_action", None)
+        data.setdefault("resolution_actor_id", None)
+        data.setdefault("resolution_source", None)
+        data.setdefault("environmental_context", {})
+        data.setdefault("resolution_key", None)
+        data.setdefault("resolution_reconciled_at", None)
+        data["schema_version"] = CARE_TASK_SCHEMA_VERSION
     _keys(data, _CARE_TASK_REQUIRED_KEYS, frozenset(), "care task")
-    if data["schema_version"] != CARE_TASK_SCHEMA_VERSION:
-        raise InvalidCareTaskError(
-            f"unsupported schema version: {data['schema_version']!r}"
-        )
     attachments = data["attachment_references"]
     if not isinstance(attachments, list):
         raise InvalidCareTaskError("attachment_references must be an array")
+    outcome_value = data["outcome"]
+    if outcome_value is None:
+        outcome = None
+    else:
+        outcome_mapping = _mapping(outcome_value, "outcome")
+        try:
+            outcome = task_outcome_from_dict(outcome_mapping)
+        except InvalidTaskOutcomeError as err:
+            raise InvalidCareTaskError(str(err)) from err
     return CareTask(
         task_id=data["task_id"],
         reptile_id=data["reptile_id"],
@@ -614,19 +779,29 @@ def care_task_from_dict(value: Mapping[str, Any]) -> CareTask:
         completed_at=_deserialize_optional_datetime(
             data["completed_at"], "completed_at"
         ),
-        outcome=data["outcome"],
+        outcome=outcome,
         notes=data["notes"],
         attachment_references=tuple(attachments),
         generated_by=data["generated_by"],
         parent_task_id=data["parent_task_id"],
         workflow_chain_id=data["workflow_chain_id"],
+        workflow_node_id=data["workflow_node_id"],
         snoozed_until=_deserialize_optional_datetime(
             data["snoozed_until"], "snoozed_until"
         ),
         assigned_user_id=data["assigned_user_id"],
+        resolution_action=data["resolution_action"],
+        resolution_actor_id=data["resolution_actor_id"],
+        resolution_source=data["resolution_source"],
+        environmental_context=data["environmental_context"],
+        resolution_key=data["resolution_key"],
+        resolution_reconciled_at=_deserialize_optional_datetime(
+            data["resolution_reconciled_at"],
+            "resolution_reconciled_at",
+        ),
         generation_key=data["generation_key"],
         generation_reason=data["generation_reason"],
-        schema_version=data["schema_version"],
+        schema_version=CARE_TASK_SCHEMA_VERSION,
     )
 
 
