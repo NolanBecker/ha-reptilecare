@@ -1,0 +1,18 @@
+# Replace these example entity IDs with the ones Home Assistant generated
+# for your reptile device.
+type: vertical-stack
+cards:
+  - type: heading
+    heading: Recent Activity
+    icon: mdi:history
+  - type: tile
+    entity: sensor.pixel_last_care_event
+    name: Last Care Event
+  - type: markdown
+    content: |
+      For full immutable history, query `reptilecare.get_timeline` from
+      Developer Tools or from your own automations.
+
+      Keep the dashboard summary compact. Detailed history is intentionally kept
+      in services instead of large entity attributes.
+

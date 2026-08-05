@@ -151,7 +151,8 @@ Returns a small diagnostic payload for automations and future dashboards:
 
 For dashboard-safe status summaries, prefer the per-reptile entities described
 in [Entities](ENTITIES.md). Query services remain the place for richer task and
-event detail.
+event detail, including the dashboard patterns documented in
+[Dashboard examples](DASHBOARD.md).
 
 ## Common Errors
 

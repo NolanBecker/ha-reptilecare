@@ -1,0 +1,55 @@
+# Replace these example entity IDs with the ones Home Assistant generated
+# for your reptile device.
+type: vertical-stack
+cards:
+  - type: heading
+    heading: Today's Care
+    icon: mdi:clipboard-text-clock-outline
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      - type: tile
+        entity: sensor.pixel_pending_care_tasks
+        name: Pending
+        color: state
+      - type: tile
+        entity: binary_sensor.pixel_pending_care
+        name: Care Pending
+        color: state
+      - type: tile
+        entity: binary_sensor.pixel_care_due
+        name: Care Due
+        color: state
+      - type: tile
+        entity: binary_sensor.pixel_overdue_care
+        name: Overdue
+        color: state
+  - type: tile
+    entity: sensor.pixel_next_care_task
+    name: Next Care Task
+  - type: tile
+    entity: button.pixel_generate_tasks
+    name: Generate Tasks
+    icon: mdi:playlist-plus
+  - type: conditional
+    conditions:
+      - entity: binary_sensor.pixel_overdue_care
+        state: "on"
+    card:
+      type: markdown
+      content: |
+        ### Overdue care
+        This reptile has at least one overdue care item. Open the next-task
+        card above first, then use Developer Tools or your own automations for
+        detailed task inspection.
+  - type: markdown
+    content: |
+      **Current limitation**
+
+      ReptileCare does not create one entity per task. For detailed task lists
+      or manual task resolution, use:
+
+      - `reptilecare.get_tasks`
+      - `reptilecare.resolve_task`
+

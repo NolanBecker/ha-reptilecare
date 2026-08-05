@@ -121,6 +121,12 @@ The first entity milestone is now also complete:
 - dynamic entity discovery for reptiles created through services
 - recorder-friendly bounded attributes instead of one entity per task
 
+The first dashboard milestone is now also documentation- and example-driven:
+
+- reusable built-in Lovelace YAML examples
+- dashboard guidance for existing reptile dashboards
+- no custom JavaScript card yet
+
 ### Phase 6 — Dashboard Cards
 
 Provide polished, reusable cards that enhance existing Home Assistant

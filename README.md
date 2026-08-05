@@ -154,6 +154,8 @@ and application layers. Notifications and richer UI remain future work.
   contracts, identifiers, responses, and examples
 - [Entities](docs/ENTITIES.md) — reptile devices, summary sensors, binary
   sensors, buttons, and projection behavior
+- [Dashboard examples](docs/DASHBOARD.md) — built-in Lovelace layouts for
+  adding care management to an existing reptile dashboard
 - [Reptiles](docs/REPTILES.md) — individual-animal ownership, overrides,
   repository behavior, persistence, and archival policy
 - [UX principles](docs/UX_PRINCIPLES.md) — standards for a calm, care-first
@@ -174,6 +176,22 @@ and application layers. Notifications and richer UI remain future work.
 - Build reusable dashboard cards and the future ReptileCare Center
 - Add actionable notifications and derived statistics
 - Support structured health observations, photos, and growth tracking
+
+## Dashboard examples
+
+ReptileCare now includes reusable built-in Lovelace YAML examples for adding
+care-management sections to an existing reptile dashboard.
+
+- [Dashboard guide](docs/DASHBOARD.md)
+- [Reptile overview example](examples/dashboard/reptile_overview.yaml)
+- [Today's Care example](examples/dashboard/todays_care.yaml)
+- [Recent activity example](examples/dashboard/recent_activity.yaml)
+- [Full Pixel dashboard example](examples/dashboard/full_pixel_dashboard.yaml)
+
+Screenshot note:
+
+- A real dashboard screenshot will be added in a future update after the
+  example layouts stabilize.
 
 Pixel, a Gargoyle Gecko, is the first development reptile and will guide early
 use cases. ReptileCare is intentionally designed to support many individual
