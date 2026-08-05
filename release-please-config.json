@@ -1,13 +1,18 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
-  "bootstrap-sha": "c8982918939010369994a74f31a9754bd480e5a7",
   "draft": true,
   "include-component-in-tag": false,
   "include-v-in-tag": true,
+  "last-release-sha": "9a7c45b41f95a9ab79253026ae80c61f52b3ddb9",
   "packages": {
     ".": {
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
+        {
+          "jsonpath": "$.project.version",
+          "path": "pyproject.toml",
+          "type": "toml"
+        },
         {
           "jsonpath": "$.version",
           "path": "custom_components/reptilecare/manifest.json",
@@ -15,7 +20,7 @@
         }
       ],
       "package-name": "ha-reptilecare",
-      "release-type": "python"
+      "release-type": "simple"
     }
   }
 }

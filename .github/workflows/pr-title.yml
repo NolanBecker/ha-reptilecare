@@ -1,0 +1,49 @@
+name: Validate PR Title
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - reopened
+      - synchronize
+
+permissions:
+  contents: read
+
+jobs:
+  conventional-pr-title:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate Conventional Commit PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          import os
+          import re
+          import sys
+
+          title = os.environ["PR_TITLE"].strip()
+          pattern = re.compile(
+              r"^(feat|fix|docs|refactor|test|chore|ci|build|perf|revert)"
+              r"(?:\([A-Za-z0-9._/-]+\))?"
+              r"(?:!)?: .+"
+          )
+
+          if pattern.fullmatch(title):
+              print(f"PR title accepted: {title}")
+              sys.exit(0)
+
+          print("::error title=Invalid PR title::PR titles must use Conventional Commit format so squash merges create parseable main-branch history for Release Please.")
+          print("Expected format: type(optional-scope): summary")
+          print("Examples:")
+          print("  feat(frontend): add Today's Care card")
+          print("  fix(entities): refresh after task resolution")
+          print("  docs(readme): clarify HACS installation")
+          print("  chore(release)!: reset Release Please baseline")
+          sys.exit(1)
+          PY
