@@ -15,8 +15,6 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.reptilecare.const import DOMAIN, INTEGRATION_NAME
 
-PIXEL_ID = "550e8400-e29b-41d4-a716-446655440000"
-
 
 async def _setup_entry(hass: HomeAssistant) -> MockConfigEntry:
     entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
@@ -85,31 +83,34 @@ async def test_entities_create_one_device_per_reptile_and_stable_unique_ids(
 ) -> None:
     """Per-reptile entities attach to one stable reptile device."""
     entry = await _setup_entry(hass)
-    await _create_pixel(hass)
+    pixel = await _create_pixel(hass)
+    reptile_id = pixel["reptile_id"]
     await hass.async_block_till_done()
 
     device_registry = dr.async_get(hass)
     entity_registry = er.async_get(hass)
 
     pending_entity_id = _entity_id(
-        entity_registry, "sensor", f"{PIXEL_ID}_pending_task_count"
+        entity_registry, "sensor", f"{reptile_id}_pending_task_count"
     )
-    next_entity_id = _entity_id(entity_registry, "sensor", f"{PIXEL_ID}_next_task")
+    next_entity_id = _entity_id(entity_registry, "sensor", f"{reptile_id}_next_task")
     last_event_entity_id = _entity_id(
-        entity_registry, "sensor", f"{PIXEL_ID}_last_event"
+        entity_registry, "sensor", f"{reptile_id}_last_event"
     )
-    due_entity_id = _entity_id(entity_registry, "binary_sensor", f"{PIXEL_ID}_care_due")
+    due_entity_id = _entity_id(
+        entity_registry, "binary_sensor", f"{reptile_id}_care_due"
+    )
     overdue_entity_id = _entity_id(
-        entity_registry, "binary_sensor", f"{PIXEL_ID}_overdue_care"
+        entity_registry, "binary_sensor", f"{reptile_id}_overdue_care"
     )
     pending_binary_entity_id = _entity_id(
-        entity_registry, "binary_sensor", f"{PIXEL_ID}_pending_care"
+        entity_registry, "binary_sensor", f"{reptile_id}_pending_care"
     )
     button_entity_id = _entity_id(
-        entity_registry, "button", f"{PIXEL_ID}_generate_tasks"
+        entity_registry, "button", f"{reptile_id}_generate_tasks"
     )
 
-    device = device_registry.async_get_device(identifiers={(DOMAIN, PIXEL_ID)})
+    device = device_registry.async_get_device(identifiers={(DOMAIN, reptile_id)})
     assert device is not None
     assert device.name == "Pixel"
     assert device.model == "Gargoyle Gecko"
@@ -131,17 +132,22 @@ async def test_entities_create_one_device_per_reptile_and_stable_unique_ids(
     renamed = await _call_service(
         hass,
         "update_reptile",
-        {"reptile_id": PIXEL_ID, "display_name": "Pixel Prime", "slug": "pixel-main"},
+        {
+            "reptile_id": reptile_id,
+            "display_name": "Pixel Prime",
+            "slug": "pixel-main",
+        },
     )
-    assert renamed["reptile"]["reptile_id"] == PIXEL_ID
+    assert renamed["reptile"]["reptile_id"] == reptile_id
     await hass.async_block_till_done()
 
-    same_device = device_registry.async_get_device(identifiers={(DOMAIN, PIXEL_ID)})
+    same_device = device_registry.async_get_device(identifiers={(DOMAIN, reptile_id)})
     assert same_device is not None
     assert same_device.id == device.id
     assert same_device.name == "Pixel Prime"
     assert (
-        entry.runtime_data.entity_projection.species_model(PIXEL_ID) == "Gargoyle Gecko"
+        entry.runtime_data.entity_projection.species_model(reptile_id)
+        == "Gargoyle Gecko"
     )
 
 
@@ -150,26 +156,29 @@ async def test_entity_states_update_from_services_and_button(
 ) -> None:
     """Task and event services refresh entity projections without restart."""
     await _setup_entry(hass)
-    await _create_pixel(hass)
+    pixel = await _create_pixel(hass)
+    reptile_id = pixel["reptile_id"]
     plan = await _create_plan(hass)
     entity_registry = er.async_get(hass)
 
     pending_entity_id = _entity_id(
-        entity_registry, "sensor", f"{PIXEL_ID}_pending_task_count"
+        entity_registry, "sensor", f"{reptile_id}_pending_task_count"
     )
-    next_entity_id = _entity_id(entity_registry, "sensor", f"{PIXEL_ID}_next_task")
+    next_entity_id = _entity_id(entity_registry, "sensor", f"{reptile_id}_next_task")
     last_event_entity_id = _entity_id(
-        entity_registry, "sensor", f"{PIXEL_ID}_last_event"
+        entity_registry, "sensor", f"{reptile_id}_last_event"
     )
-    due_entity_id = _entity_id(entity_registry, "binary_sensor", f"{PIXEL_ID}_care_due")
+    due_entity_id = _entity_id(
+        entity_registry, "binary_sensor", f"{reptile_id}_care_due"
+    )
     overdue_entity_id = _entity_id(
-        entity_registry, "binary_sensor", f"{PIXEL_ID}_overdue_care"
+        entity_registry, "binary_sensor", f"{reptile_id}_overdue_care"
     )
     pending_binary_entity_id = _entity_id(
-        entity_registry, "binary_sensor", f"{PIXEL_ID}_pending_care"
+        entity_registry, "binary_sensor", f"{reptile_id}_pending_care"
     )
     button_entity_id = _entity_id(
-        entity_registry, "button", f"{PIXEL_ID}_generate_tasks"
+        entity_registry, "button", f"{reptile_id}_generate_tasks"
     )
 
     assert hass.states.get(pending_entity_id).state == "0"
@@ -254,18 +263,17 @@ async def test_dynamic_entity_creation_and_disabled_reptile_behavior(
     await _setup_entry(hass)
     entity_registry = er.async_get(hass)
 
-    assert (
-        entity_registry.async_get_entity_id(
-            "sensor", DOMAIN, f"{PIXEL_ID}_pending_task_count"
-        )
-        is None
+    assert not any(
+        entry.platform == "sensor" and entry.unique_id.endswith("_pending_task_count")
+        for entry in entity_registry.entities.values()
     )
 
-    await _create_pixel(hass)
+    pixel = await _create_pixel(hass)
+    reptile_id = pixel["reptile_id"]
     await hass.async_block_till_done()
 
     pending_entity_id = _entity_id(
-        entity_registry, "sensor", f"{PIXEL_ID}_pending_task_count"
+        entity_registry, "sensor", f"{reptile_id}_pending_task_count"
     )
     assert hass.states.get(pending_entity_id).state == "0"
 
@@ -273,7 +281,7 @@ async def test_dynamic_entity_creation_and_disabled_reptile_behavior(
     await hass.async_block_till_done()
     assert hass.states.get(pending_entity_id).state == STATE_UNAVAILABLE
 
-    await _call_service(hass, "enable_reptile", {"reptile_id": PIXEL_ID})
+    await _call_service(hass, "enable_reptile", {"reptile_id": reptile_id})
     await hass.async_block_till_done()
     assert hass.states.get(pending_entity_id).state == "0"
 
@@ -283,15 +291,16 @@ async def test_generate_tasks_button_is_idempotent(
 ) -> None:
     """The button delegates to generation and repeated presses stay idempotent."""
     await _setup_entry(hass)
-    await _create_pixel(hass)
+    pixel = await _create_pixel(hass)
+    reptile_id = pixel["reptile_id"]
     await _create_plan(hass)
     entity_registry = er.async_get(hass)
 
     pending_entity_id = _entity_id(
-        entity_registry, "sensor", f"{PIXEL_ID}_pending_task_count"
+        entity_registry, "sensor", f"{reptile_id}_pending_task_count"
     )
     button_entity_id = _entity_id(
-        entity_registry, "button", f"{PIXEL_ID}_generate_tasks"
+        entity_registry, "button", f"{reptile_id}_generate_tasks"
     )
 
     await hass.services.async_call(
