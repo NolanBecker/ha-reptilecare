@@ -43,6 +43,17 @@ class TaskGenerationResult:
     errors: Mapping[str, str] = field(default_factory=dict)
 
 
+@dataclass(frozen=True, slots=True)
+class TaskGenerationPreviewResult:
+    """Structured non-persisting preview for one generation pass."""
+
+    would_create: tuple[CareTask, ...] = ()
+    already_exists: tuple[CareTask, ...] = ()
+    skipped_plan_ids: tuple[str, ...] = ()
+    warnings: tuple[str, ...] = ()
+    errors: Mapping[str, str] = field(default_factory=dict)
+
+
 class ScheduleCalculator:
     """Pure schedule calculator for supported CarePlan interval schedules."""
 
@@ -183,8 +194,39 @@ class CareTaskGenerator:
         now: datetime,
         look_ahead: timedelta | None = None,
         look_back: timedelta | None = None,
+        reptile_id: str | None = None,
+        care_plan_id: str | None = None,
     ) -> TaskGenerationResult:
         """Generate missing CareTasks within the bounded window."""
+        preview = await self.async_preview(
+            now=now,
+            look_ahead=look_ahead,
+            look_back=look_back,
+            reptile_id=reptile_id,
+            care_plan_id=care_plan_id,
+        )
+        created: list[str] = []
+        for task in preview.would_create:
+            await self._task_repository.async_add(task)
+            created.append(task.task_id)
+        return TaskGenerationResult(
+            created_task_ids=tuple(created),
+            existing_task_ids=tuple(task.task_id for task in preview.already_exists),
+            skipped_plan_ids=preview.skipped_plan_ids,
+            warnings=preview.warnings,
+            errors=preview.errors,
+        )
+
+    async def async_preview(
+        self,
+        *,
+        now: datetime,
+        look_ahead: timedelta | None = None,
+        look_back: timedelta | None = None,
+        reptile_id: str | None = None,
+        care_plan_id: str | None = None,
+    ) -> TaskGenerationPreviewResult:
+        """Preview missing CareTasks within the bounded window without persisting."""
         current_time = self._aware_utc(now, "now")
         look_ahead_window = (
             self._default_look_ahead if look_ahead is None else look_ahead
@@ -199,12 +241,26 @@ class CareTaskGenerator:
         window_start = current_time - look_back_window
         window_end = current_time + look_ahead_window
 
-        created: list[str] = []
-        existing: list[str] = []
+        would_create: list[CareTask] = []
+        already_exists: list[CareTask] = []
         skipped: list[str] = []
         errors: dict[str, str] = {}
 
-        for care_plan in self._care_plan_repository.all(include_disabled=True):
+        care_plans = self._care_plan_repository.all(include_disabled=True)
+        if care_plan_id is not None:
+            care_plans = tuple(
+                care_plan
+                for care_plan in care_plans
+                if care_plan.care_plan_id == care_plan_id
+            )
+        if reptile_id is not None:
+            care_plans = tuple(
+                care_plan
+                for care_plan in care_plans
+                if care_plan.reptile_id == reptile_id
+            )
+
+        for care_plan in care_plans:
             if not care_plan.enabled:
                 skipped.append(care_plan.care_plan_id)
                 continue
@@ -251,10 +307,8 @@ class CareTaskGenerator:
                     generation_reason=reason,
                 )
                 if self._task_repository.contains_generation_key(generation_key):
-                    existing.append(
-                        self._task_repository.get_by_generation_key(
-                            generation_key
-                        ).task_id
+                    already_exists.append(
+                        self._task_repository.get_by_generation_key(generation_key)
                     )
                     continue
                 task = self._build_task(
@@ -265,12 +319,11 @@ class CareTaskGenerator:
                     generation_reason=reason,
                     created_at=current_time,
                 )
-                await self._task_repository.async_add(task)
-                created.append(task.task_id)
+                would_create.append(task)
 
-        return TaskGenerationResult(
-            created_task_ids=tuple(created),
-            existing_task_ids=tuple(existing),
+        return TaskGenerationPreviewResult(
+            would_create=tuple(would_create),
+            already_exists=tuple(already_exists),
             skipped_plan_ids=tuple(sorted(set(skipped))),
             warnings=(),
             errors=MappingProxyType(dict(sorted(errors.items()))),

@@ -7,7 +7,7 @@ It answers one narrow question:
 > What should happen when a persisted CareTask is terminally resolved?
 
 It does not own keeper intent, reusable care definitions, reusable workflow
-definitions, Home Assistant services, UI, or notifications.
+definitions, UI, or notifications.
 
 ## Responsibilities
 
@@ -249,6 +249,7 @@ Setup order is:
 4. run bounded recurring task generation
 5. refresh coordinator state
 
-No Home Assistant services, entities, notifications, or dashboard cards are
-added in this branch. Those future adapters should call `CareEngine` rather
-than writing tasks or events directly.
+Home Assistant services now call `CareEngine` through a dedicated adapter
+module. They resolve external identifiers, translate Home Assistant context
+into `actor_id` and `source`, and serialize stable JSON responses. Entities,
+notifications, and dashboard cards remain future adapters.
