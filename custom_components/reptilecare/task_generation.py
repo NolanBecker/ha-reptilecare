@@ -183,6 +183,8 @@ class CareTaskGenerator:
         now: datetime,
         look_ahead: timedelta | None = None,
         look_back: timedelta | None = None,
+        reptile_id: str | None = None,
+        care_plan_id: str | None = None,
     ) -> TaskGenerationResult:
         """Generate missing CareTasks within the bounded window."""
         current_time = self._aware_utc(now, "now")
@@ -204,7 +206,21 @@ class CareTaskGenerator:
         skipped: list[str] = []
         errors: dict[str, str] = {}
 
-        for care_plan in self._care_plan_repository.all(include_disabled=True):
+        care_plans = self._care_plan_repository.all(include_disabled=True)
+        if care_plan_id is not None:
+            care_plans = tuple(
+                care_plan
+                for care_plan in care_plans
+                if care_plan.care_plan_id == care_plan_id
+            )
+        if reptile_id is not None:
+            care_plans = tuple(
+                care_plan
+                for care_plan in care_plans
+                if care_plan.reptile_id == reptile_id
+            )
+
+        for care_plan in care_plans:
             if not care_plan.enabled:
                 skipped.append(care_plan.care_plan_id)
                 continue

@@ -18,7 +18,8 @@ generation, derived due-state projection, terminal task resolution through
 `CareEngine`, immutable CareEvent creation, reusable workflow evaluation, and
 deterministic follow-up task creation.
 
-It still does not add Home Assistant services, entities, notifications, or UI
+It now supports Home Assistant services for generation, resolution, and read
+queries, but it still does not add entities, notifications, or dedicated UI
 for task resolution.
 
 ## Current flow

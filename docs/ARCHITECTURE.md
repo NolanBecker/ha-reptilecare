@@ -19,7 +19,9 @@ TaskTemplate ----------------> CarePlans --> CareTasks --> CareEngine --> CareEv
                                ↓
                            Coordinator
                                ↓
-                   Home Assistant Entities
+                  Home Assistant Services
+                               ↓
+                   Future Home Assistant Entities
 ```
 
 This is a dependency direction, not merely a screen flow. Each layer has a
@@ -30,7 +32,8 @@ The [core domain design proposal](CORE_DOMAIN_DESIGN.md) extends these accepted
 boundaries with implementation-ready recommendations for `SpeciesProfile`,
 `TaskTemplate`, task outcomes, workflow-generated follow-ups, persistence, and
 Home Assistant adapters. The current implementation now covers persistent task
-generation plus the first end-to-end CareEngine execution loop.
+generation, the first end-to-end CareEngine execution loop, and a thin Home
+Assistant service adapter over those capabilities.
 
 ## Reptile
 
@@ -157,7 +160,9 @@ The current branch implements:
 - pure workflow evaluation
 - deterministic follow-up task creation
 
-Home Assistant services, notifications, and entities remain future adapters.
+Home Assistant services now exist as thin adapters over the repositories,
+generator, engine, and event store. Notifications and entities remain future
+adapters.
 See [Care tasks](CARE_TASKS.md) and [Care engine](CARE_ENGINE.md) for the full
 boundary.
 
@@ -236,17 +241,19 @@ owned by the coordinator: keeper-owned persistence, generated operational
 work, execution orchestration, and event-derived projections have separate
 responsibilities and lifecycles.
 
-## Home Assistant entities
+## Home Assistant adapters
 
-Entities are presentation and automation adapters at the outer edge of the
-system. They should expose stable domain results to Home Assistant while keeping
-business rules in the domain layers.
+Services and entities are presentation and automation adapters at the outer
+edge of the system. They should expose stable domain results to Home Assistant
+while keeping business rules in the domain layers.
 
-An entity may display today’s next CareTask or derived recent-care information,
-but it should not calculate those answers independently or persist its own copy
-of them. This keeps dashboards, services, and notifications consistent.
+A service or entity may display today’s next CareTask or derived recent-care
+information, but it should not calculate those answers independently or persist
+its own copy of them. This keeps dashboards, services, and notifications
+consistent.
 
-No entities are implemented in the current foundation.
+The current foundation now implements Home Assistant services but still does
+not implement entities.
 
 ## Why state is derived
 
@@ -264,6 +271,8 @@ from authoritative history.
 
 - Domain logic must not depend on dashboard layout.
 - Entities and services must not write storage records directly.
+- Services may resolve `slug` to `reptile_id`, but internal runtime logic must
+  continue to use `reptile_id`.
 - TaskTemplates define reusable action vocabulary; they must not hold runtime state.
 - WorkflowGraphs define reusable behavior vocabulary; they must not execute
   runtime state changes themselves.

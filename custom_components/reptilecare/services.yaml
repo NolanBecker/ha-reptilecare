@@ -1,0 +1,391 @@
+create_reptile:
+  name: Create reptile
+  description: Create a keeper-owned reptile record.
+  fields:
+    display_name:
+      required: true
+      example: Pixel
+      selector:
+        text:
+    species_profile_id:
+      required: true
+      example: builtin:gargoyle_gecko
+      selector:
+        text:
+    slug:
+      example: pixel
+      selector:
+        text:
+    morph:
+      selector:
+        text:
+    sex:
+      selector:
+        select:
+          options:
+            - female
+            - male
+            - unknown
+    hatch_date:
+      selector:
+        date:
+    acquired_date:
+      selector:
+        date:
+    photo_reference:
+      selector:
+        text:
+    notes:
+      selector:
+        text:
+    enclosure_id:
+      selector:
+        text:
+    overrides:
+      selector:
+        object:
+update_reptile:
+  name: Update reptile
+  description: Update selected reptile fields without changing the stable UUID.
+  fields:
+    reptile_id:
+      selector:
+        text:
+    slug:
+      selector:
+        text:
+    display_name:
+      selector:
+        text:
+    species_profile_id:
+      selector:
+        text:
+    morph:
+      selector:
+        text:
+    sex:
+      selector:
+        select:
+          options:
+            - female
+            - male
+            - unknown
+    hatch_date:
+      selector:
+        date:
+    acquired_date:
+      selector:
+        date:
+    photo_reference:
+      selector:
+        text:
+    notes:
+      selector:
+        text:
+    enclosure_id:
+      selector:
+        text:
+    overrides:
+      selector:
+        object:
+enable_reptile:
+  name: Enable reptile
+  description: Enable a reptile record.
+  fields:
+    reptile_id:
+      selector:
+        text:
+    slug:
+      selector:
+        text:
+disable_reptile:
+  name: Disable reptile
+  description: Disable a reptile record without deleting history.
+  fields:
+    reptile_id:
+      selector:
+        text:
+    slug:
+      selector:
+        text:
+create_care_plan:
+  name: Create care plan
+  description: Create a care plan for one reptile.
+  fields:
+    reptile_id:
+      selector:
+        text:
+    slug:
+      selector:
+        text:
+    task_template_id:
+      required: true
+      example: builtin:feed_fruit
+      selector:
+        text:
+    workflow_id:
+      required: true
+      example: builtin:feeding_cycle
+      selector:
+        text:
+    display_name:
+      required: true
+      selector:
+        text:
+    enabled:
+      selector:
+        boolean:
+    priority:
+      selector:
+        select:
+          options:
+            - low
+            - normal
+            - high
+            - urgent
+    schedule:
+      required: true
+      selector:
+        object:
+    effective_date:
+      selector:
+        date:
+    optional_end_date:
+      selector:
+        date:
+    reminder_configuration:
+      selector:
+        object:
+    metadata:
+      selector:
+        object:
+update_care_plan:
+  name: Update care plan
+  description: Update explicit fields on an existing care plan.
+  fields:
+    care_plan_id:
+      required: true
+      selector:
+        text:
+    task_template_id:
+      selector:
+        text:
+    workflow_id:
+      selector:
+        text:
+    display_name:
+      selector:
+        text:
+    enabled:
+      selector:
+        boolean:
+    priority:
+      selector:
+        select:
+          options:
+            - low
+            - normal
+            - high
+            - urgent
+    schedule:
+      selector:
+        object:
+    effective_date:
+      selector:
+        date:
+    optional_end_date:
+      selector:
+        date:
+    reminder_configuration:
+      selector:
+        object:
+    metadata:
+      selector:
+        object:
+enable_care_plan:
+  name: Enable care plan
+  description: Enable an existing care plan.
+  fields:
+    care_plan_id:
+      required: true
+      selector:
+        text:
+disable_care_plan:
+  name: Disable care plan
+  description: Disable an existing care plan.
+  fields:
+    care_plan_id:
+      required: true
+      selector:
+        text:
+generate_tasks:
+  name: Generate tasks
+  description: Generate missing care tasks from enabled care plans.
+  fields:
+    reptile_id:
+      selector:
+        text:
+    slug:
+      selector:
+        text:
+    care_plan_id:
+      selector:
+        text:
+    horizon_duration:
+      selector:
+        duration:
+    horizon_end:
+      selector:
+        datetime:
+    now:
+      selector:
+        datetime:
+resolve_task:
+  name: Resolve task
+  description: Complete, skip, or cancel one care task through the CareEngine.
+  fields:
+    task_id:
+      required: true
+      selector:
+        text:
+    action:
+      required: true
+      selector:
+        select:
+          options:
+            - complete
+            - skip
+            - cancel
+    outcome_id:
+      selector:
+        text:
+    outcome_metadata:
+      selector:
+        object:
+    notes:
+      selector:
+        text:
+    attachment_references:
+      selector:
+        object:
+    environmental_context:
+      selector:
+        object:
+    completed_at:
+      selector:
+        datetime:
+log_event:
+  name: Log event
+  description: Append a manual immutable CareEvent for one reptile.
+  fields:
+    reptile_id:
+      selector:
+        text:
+    slug:
+      selector:
+        text:
+    event_type:
+      required: true
+      selector:
+        select:
+          options:
+            - feeding
+            - food_removed
+            - spot_clean
+            - deep_clean
+            - weight
+            - shed
+            - health_note
+            - photo
+    timestamp:
+      selector:
+        datetime:
+    context:
+      selector:
+        object:
+    notes:
+      selector:
+        text:
+    attachment_references:
+      selector:
+        object:
+    environmental_context:
+      selector:
+        object:
+get_tasks:
+  name: Get tasks
+  description: Return filtered care tasks with derived due-state projection.
+  fields:
+    reptile_id:
+      selector:
+        text:
+    slug:
+      selector:
+        text:
+    status:
+      selector:
+        select:
+          options:
+            - pending
+            - completed
+            - skipped
+            - cancelled
+    due_state:
+      selector:
+        select:
+          options:
+            - upcoming
+            - due
+            - overdue
+            - snoozed
+            - terminal
+    care_plan_id:
+      selector:
+        text:
+    due_before:
+      selector:
+        datetime:
+    due_after:
+      selector:
+        datetime:
+    include_terminal:
+      selector:
+        boolean:
+    limit:
+      selector:
+        number:
+          min: 1
+          mode: box
+get_timeline:
+  name: Get timeline
+  description: Return filtered immutable CareEvents in chronological order.
+  fields:
+    reptile_id:
+      selector:
+        text:
+    slug:
+      selector:
+        text:
+    event_type:
+      selector:
+        select:
+          options:
+            - feeding
+            - food_removed
+            - spot_clean
+            - deep_clean
+            - weight
+            - shed
+            - health_note
+            - photo
+    start:
+      selector:
+        datetime:
+    end:
+      selector:
+        datetime:
+    limit:
+      selector:
+        number:
+          min: 1
+          mode: box

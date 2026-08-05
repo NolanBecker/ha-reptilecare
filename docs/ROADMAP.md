@@ -87,8 +87,8 @@ TaskOutcome validation, immutable CareEvent creation, pure workflow
 evaluation, deterministic follow-up task generation, and restart
 reconciliation.
 
-Home Assistant task-resolution services, entities, notifications, and broader
-UI surfaces remain future Phase 4 and Phase 5 work.
+Home Assistant task-resolution entities, notifications, and broader UI surfaces
+remain future Phase 4 and Phase 5 work.
 
 ### Phase 5 — Home Assistant Services
 
@@ -100,6 +100,17 @@ clients.
 - Query or target reptiles using stable identifiers
 - Validate inputs through shared domain logic
 - Preserve backward compatibility as the service surface evolves
+
+Phase 5 has now started with a first production-quality service layer for:
+
+- reptile create, update, enable, and disable
+- care-plan create, update, enable, and disable
+- idempotent task generation
+- CareEngine-backed task resolution
+- manual immutable event logging
+- read-only task and timeline queries
+
+Entities, dashboards, notifications, and broader UI still remain future work.
 
 ### Phase 6 — Dashboard Cards
 

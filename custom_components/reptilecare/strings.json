@@ -9,5 +9,59 @@
         "title": "Set up ReptileCare"
       }
     }
+  },
+  "services": {
+    "create_reptile": {
+      "name": "Create reptile",
+      "description": "Create a keeper-owned reptile record."
+    },
+    "update_reptile": {
+      "name": "Update reptile",
+      "description": "Update explicit reptile fields while preserving stable identity."
+    },
+    "enable_reptile": {
+      "name": "Enable reptile",
+      "description": "Enable a reptile record."
+    },
+    "disable_reptile": {
+      "name": "Disable reptile",
+      "description": "Disable a reptile record without deleting history."
+    },
+    "create_care_plan": {
+      "name": "Create care plan",
+      "description": "Create a care plan for one reptile."
+    },
+    "update_care_plan": {
+      "name": "Update care plan",
+      "description": "Update explicit fields on an existing care plan."
+    },
+    "enable_care_plan": {
+      "name": "Enable care plan",
+      "description": "Enable an existing care plan."
+    },
+    "disable_care_plan": {
+      "name": "Disable care plan",
+      "description": "Disable an existing care plan."
+    },
+    "generate_tasks": {
+      "name": "Generate tasks",
+      "description": "Generate missing care tasks from enabled care plans."
+    },
+    "resolve_task": {
+      "name": "Resolve task",
+      "description": "Resolve one care task through the CareEngine."
+    },
+    "log_event": {
+      "name": "Log event",
+      "description": "Append a manual immutable CareEvent."
+    },
+    "get_tasks": {
+      "name": "Get tasks",
+      "description": "Return filtered care tasks with derived due-state projection."
+    },
+    "get_timeline": {
+      "name": "Get timeline",
+      "description": "Return filtered immutable CareEvents in chronological order."
+    }
   }
 }

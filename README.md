@@ -12,8 +12,8 @@ reptile needs today.
 
 > [!NOTE]
 > ReptileCare currently provides domain, persistence, CareTask generation, and
-> CareEngine execution foundations. It does not yet expose reptile management
-> UI, Home Assistant task-resolution services, entities, or notifications.
+> CareEngine execution foundations, plus a first Home Assistant service API. It
+> does not yet expose reptile management UI, entities, or notifications.
 
 ## Features
 
@@ -31,6 +31,9 @@ The current foundation provides:
   generation service
 - A deterministic CareEngine that resolves tasks, records CareEvents, evaluates
   workflows, and creates follow-up tasks
+- A Home Assistant service adapter for reptile management, care-plan
+  management, task generation, task resolution, manual event logging, and
+  read-only task and timeline queries
 - A validated multi-reptile repository with immutable keeper-owned records
 - Separate, versioned persistence for reptiles and CareEvent history
 - Versioned persistent CareEvent history backed by Home Assistant storage
@@ -143,6 +146,8 @@ services, notifications, and UI adapters remain future work.
   startup reconciliation, and due-state projection
 - [Care engine](docs/CARE_ENGINE.md) — task resolution lifecycle, workflow
   evaluation, follow-up generation, and restart reconciliation
+- [Home Assistant services](docs/HOME_ASSISTANT_SERVICES.md) — service
+  contracts, identifiers, responses, and examples
 - [Reptiles](docs/REPTILES.md) — individual-animal ownership, overrides,
   repository behavior, persistence, and archival policy
 - [UX principles](docs/UX_PRINCIPLES.md) — standards for a calm, care-first
