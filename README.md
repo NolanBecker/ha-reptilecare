@@ -88,6 +88,56 @@ pytest
 
 On Windows, activate the environment with `.venv\Scripts\activate`.
 
+## Development Workflow
+
+ReptileCare uses short-lived feature branches and draft pull requests so work
+stays reviewable and CI stays meaningful.
+
+Recommended flow:
+
+```text
+feature branch
+    ↓
+draft pull request
+    ↓
+review
+    ↓
+merge to main
+```
+
+Use Conventional Commits for merged history because releases and changelog
+entries are generated from commit messages. See [Contributing](CONTRIBUTING.md)
+for branch naming, commit examples, and local quality expectations.
+
+## Release Workflow
+
+Releases are automated with Release Please.
+
+Recommended release path:
+
+```text
+feature branch
+    ↓
+draft PR
+    ↓
+review
+    ↓
+merge
+    ↓
+Release Please creates or updates release PR
+    ↓
+merge release PR
+    ↓
+GitHub Release and tag
+    ↓
+HACS update
+```
+
+Release Please reads Conventional Commits on `main`, updates
+`CHANGELOG.md`, bumps the project version and integration manifest version,
+opens a release PR, and creates the GitHub release after that PR is merged.
+The standard validation workflows remain the gate before any release is cut.
+
 ## Architecture
 
 ReptileCare stores facts as immutable `CareEvent` records rather than
@@ -167,8 +217,8 @@ and application layers. Notifications and richer UI remain future work.
   experience
 - [Development workflow](DEVELOPMENT.md) — GitHub Issues, milestones, labels,
   project board, and pull request lifecycle
-- [Contributing](docs/CONTRIBUTING.md) — branch workflow, quality requirements,
-  and pull request expectations
+- [Contributing](CONTRIBUTING.md) — branch workflow, Conventional Commits,
+  release policy, quality requirements, and pull request expectations
 - [ReptileCare Roadmap project](https://github.com/users/NolanBecker/projects/1)
   — live Kanban planning for committed work
 

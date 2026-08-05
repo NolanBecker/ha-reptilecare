@@ -58,10 +58,10 @@ from .domain.reptile import (
 )
 from .domain.task_template import TaskPriority, TaskTemplateNotFoundError
 from .domain.workflow import WorkflowNotFoundError
-from .manifest import INTEGRATION_VERSION
 from .models import CareEvent, CareEventType, ReptileCareRuntimeData
 from .runtime_updates import async_notify_runtime_updated
 from .storage import STORAGE_MINOR_VERSION, STORAGE_VERSION
+from .version import INTEGRATION_VERSION
 
 SOURCE_HOME_ASSISTANT_SERVICE = "home_assistant_service"
 

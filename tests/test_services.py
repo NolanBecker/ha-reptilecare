@@ -11,6 +11,7 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.reptilecare.const import DOMAIN, INTEGRATION_NAME
+from custom_components.reptilecare.version import INTEGRATION_VERSION
 
 
 async def _setup_entry(hass: HomeAssistant) -> MockConfigEntry:
@@ -562,7 +563,7 @@ async def test_system_health_reports_runtime_counts(
 
     health = await _call_service(hass, "system_health", {})
 
-    assert health["integration_version"] == "0.1.1"
+    assert health["integration_version"] == INTEGRATION_VERSION
     assert health["schema_version"]["reptiles"] == 1
     assert health["species_profile_count"] >= 1
     assert health["reptile_count"] == 1
