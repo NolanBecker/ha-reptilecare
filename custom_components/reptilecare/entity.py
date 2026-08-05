@@ -79,7 +79,7 @@ class ReptileCareEntity(CoordinatorEntity[ReptileCareCoordinator]):
         self.async_write_ha_state()
 
 
-def async_setup_reptile_platform(
+async def async_setup_reptile_platform(
     entry: ReptileCareConfigEntry,
     async_add_entities: Callable[[Iterable[ReptileCareEntity]], Awaitable[None] | None],
     entity_factory: Callable[[ReptileCareConfigEntry, str], list[ReptileCareEntity]],
@@ -108,7 +108,7 @@ def async_setup_reptile_platform(
             if result is not None:
                 await result
 
-    _schedule_add_missing()
+    await _async_add_missing()
     entry.async_on_unload(
         async_dispatcher_connect(
             entry.runtime_data.coordinator.hass,

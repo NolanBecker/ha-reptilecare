@@ -18,7 +18,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up ReptileCare sensor entities."""
-    async_setup_reptile_platform(entry, async_add_entities, _sensor_entities)
+    await async_setup_reptile_platform(entry, async_add_entities, _sensor_entities)
 
 
 def _sensor_entities(
