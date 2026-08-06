@@ -1,14 +1,40 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  applyTaskUiState,
+  buildHeaderContext,
   cardType,
+  groupTasks,
   isQuickActionTask,
+  mergeResolutionResult,
   normalizeTask,
   resolveReptileLabel,
   sortTasks,
   summarizeTaskList,
   validateTodaysCareConfig,
 } from "../../custom_components/reptilecare/frontend/models/todays-care-model.js";
+
+function task(overrides = {}) {
+  return normalizeTask({
+    task_id: overrides.task_id ?? "task-1",
+    task_template_id: overrides.task_template_id ?? "builtin:feed_fruit",
+    care_plan_id: overrides.care_plan_id ?? "plan-1",
+    due_at: overrides.due_at ?? "2026-08-06T15:00:00-05:00",
+    due_state: overrides.due_state,
+    presentation: {
+      title: overrides.title ?? "Feed Fruit",
+      priority: overrides.priority ?? "normal",
+      icon: "mdi:food-apple",
+      care_plan_display_name: "Feeding",
+      description: overrides.description ?? null,
+    },
+    completion_schema: overrides.completion_schema ?? {
+      outcomes: [],
+      context_fields: [],
+    },
+    ui: overrides.ui,
+  });
+}
 
 describe("validateTodaysCareConfig", () => {
   it("accepts a slug-based configuration", () => {
@@ -64,12 +90,13 @@ describe("normalizeTask", () => {
       task_template_id: "builtin:feed_fruit",
       care_plan_id: "plan-1",
       completion_schema: { outcomes: [], context_fields: [] },
+      due_at: "2026-08-07T10:00:00-05:00",
     });
 
     expect(normalized.presentation.title).toBe("builtin:feed_fruit");
     expect(normalized.presentation.icon).toBe("mdi:clipboard-text-clock-outline");
     expect(normalized.quick_actions_enabled).toBe(false);
-    expect(normalized.due_state).toBe("upcoming");
+    expect(normalized.due_state).toBe("future");
   });
 });
 
@@ -90,68 +117,128 @@ describe("resolveReptileLabel", () => {
   });
 });
 
-describe("sortTasks", () => {
-  it("orders overdue before due and upcoming tasks", () => {
+describe("sorting and grouping", () => {
+  it("orders overdue before due, today, and future tasks", () => {
     const tasks = sortTasks([
-      normalizeTask({
-        task_id: "upcoming",
-        task_template_id: "t3",
-        care_plan_id: "plan-1",
-        due_at: "2026-08-06T15:00:00+00:00",
-        due_state: "upcoming",
-        presentation: { title: "Upcoming", priority: "normal" },
-        completion_schema: { outcomes: [], context_fields: [] },
+      task({
+        task_id: "future",
+        due_at: "2026-08-07T15:00:00-05:00",
+        due_state: "future",
+        title: "Future",
       }),
-      normalizeTask({
+      task({
         task_id: "overdue",
-        task_template_id: "t1",
-        care_plan_id: "plan-1",
-        due_at: "2026-08-06T09:00:00+00:00",
+        due_at: "2026-08-05T09:00:00-05:00",
         due_state: "overdue",
-        presentation: { title: "Overdue", priority: "normal" },
-        completion_schema: { outcomes: [], context_fields: [] },
+        title: "Overdue",
       }),
-      normalizeTask({
+      task({
         task_id: "due",
-        task_template_id: "t2",
-        care_plan_id: "plan-1",
-        due_at: "2026-08-06T11:00:00+00:00",
+        due_at: "2026-08-06T11:00:00-05:00",
         due_state: "due",
-        presentation: { title: "Due", priority: "normal" },
-        completion_schema: { outcomes: [], context_fields: [] },
+        title: "Due",
+      }),
+      task({
+        task_id: "today",
+        due_at: "2026-08-06T18:00:00-05:00",
+        title: "Today",
       }),
     ]);
 
-    expect(tasks.map((task) => task.task_id)).toEqual(["overdue", "due", "upcoming"]);
+    expect(tasks.map((item) => item.task_id)).toEqual([
+      "overdue",
+      "due",
+      "today",
+      "future",
+    ]);
+  });
+
+  it("groups tasks by urgency buckets", () => {
+    const sections = groupTasks([
+      task({ task_id: "overdue", due_at: "2026-08-05T09:00:00-05:00", due_state: "overdue" }),
+      task({ task_id: "due", due_at: "2026-08-06T11:00:00-05:00", due_state: "due" }),
+      task({ task_id: "today", due_at: "2026-08-06T18:00:00-05:00" }),
+      task({ task_id: "future", due_at: "2026-08-07T09:00:00-05:00" }),
+    ]);
+
+    expect(sections.map((section) => section.key)).toEqual([
+      "overdue",
+      "due",
+      "upcoming_today",
+      "future",
+    ]);
   });
 });
 
-describe("summarizeTaskList", () => {
+describe("summary and header", () => {
   it("returns a friendly clear state when no tasks exist", () => {
     expect(summarizeTaskList([], { slug: "pixel", reptile_id: null }, [])).toEqual({
       tone: "clear",
       heading: "✨ Pixel is all caught up!",
       body: "No care is currently due.",
+      statusLabel: "All Caught Up",
     });
   });
 
   it("returns a warning state when overdue tasks exist", () => {
-    const tasks = [
-      normalizeTask({
-        task_id: "task-1",
-        task_template_id: "builtin:feed_fruit",
-        care_plan_id: "plan-1",
-        due_at: "2026-08-06T09:00:00+00:00",
-        due_state: "overdue",
-        completion_schema: { outcomes: [], context_fields: [] },
-      }),
-    ];
+    const tasks = [task({ task_id: "task-1", due_at: "2026-08-05T09:00:00-05:00", due_state: "overdue" })];
 
     expect(summarizeTaskList(tasks, { slug: "pixel", reptile_id: null }, [])).toEqual({
-      tone: "warning",
+      tone: "overdue",
       heading: "⚠️ Pixel needs attention",
       body: "1 care task is overdue.",
+      statusLabel: "Overdue",
     });
+  });
+
+  it("builds a header context with count and status", () => {
+    const header = buildHeaderContext(
+      [
+        task({ task_id: "task-1", due_state: "due", due_at: "2026-08-06T10:00:00-05:00" }),
+        task({ task_id: "task-2", due_at: "2026-08-06T16:00:00-05:00" }),
+      ],
+      { slug: "pixel", reptile_id: null },
+      [{ attributes: { friendly_name: "Pixel Pending Care Tasks", species: "Gargoyle Gecko" } }],
+    );
+
+    expect(header.reptileLabel).toBe("Pixel");
+    expect(header.species).toBe("Gargoyle Gecko");
+    expect(header.pendingCount).toBe(2);
+    expect(header.statusLabel).toBe("Due Today");
   });
 });
 
+describe("local task state", () => {
+  it("applies task ui updates without disturbing ordering", () => {
+    const tasks = applyTaskUiState(
+      [task({ task_id: "a" }), task({ task_id: "b", due_at: "2026-08-05T09:00:00-05:00", due_state: "overdue" })],
+      "a",
+      { busy: true, error: "oops" },
+    );
+
+    expect(tasks.find((item) => item.task_id === "a").ui.busy).toBe(true);
+    expect(tasks.find((item) => item.task_id === "a").ui.error).toBe("oops");
+    expect(tasks.map((item) => item.task_id)).toEqual(["b", "a"]);
+  });
+
+  it("merges follow-up tasks from a resolution response", () => {
+    const tasks = mergeResolutionResult(
+      [task({ task_id: "task-1" })],
+      "task-1",
+      {
+        created_follow_up_tasks: [
+          {
+            task_id: "task-2",
+            task_template_id: "builtin:remove_food",
+            care_plan_id: "plan-1",
+            due_at: "2026-08-06T17:00:00-05:00",
+          },
+        ],
+        existing_follow_up_tasks: [],
+      },
+    );
+
+    expect(tasks.map((item) => item.task_id)).toEqual(["task-2"]);
+    expect(tasks[0].ui.phase).toBe("entering");
+  });
+});

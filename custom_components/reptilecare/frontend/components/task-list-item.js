@@ -6,12 +6,24 @@ function eventName(name) {
   return `reptilecare:${name}`;
 }
 
+function dueStateLabel(task) {
+  switch (task.urgency_group) {
+    case "overdue":
+      return "Overdue";
+    case "due":
+      return "Due now";
+    case "upcoming_today":
+      return "Upcoming today";
+    default:
+      return "Future";
+  }
+}
+
 export class ReptileCareTaskListItem extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
     this._task = null;
-    this._busy = false;
     this._locale = "en";
   }
 
@@ -20,9 +32,8 @@ export class ReptileCareTaskListItem extends HTMLElement {
     this._render();
   }
 
-  set busy(value) {
-    this._busy = Boolean(value);
-    this._render();
+  get task() {
+    return this._task;
   }
 
   set locale(value) {
@@ -67,23 +78,16 @@ export class ReptileCareTaskListItem extends HTMLElement {
 
     const { absolute, relative } = formatDueDetails(this._task.due_at, this._locale);
     const presentation = this._task.presentation;
-    const priority = escapeHtml(presentation.priority);
     const title = escapeHtml(presentation.title);
-    const taskTitleLabel = escapeHtml(`Actions for ${presentation.title}`);
     const carePlanName = presentation.care_plan_display_name
       ? `<p class="meta">${escapeHtml(presentation.care_plan_display_name)}</p>`
       : "";
     const description = presentation.description
       ? `<p class="description">${escapeHtml(presentation.description)}</p>`
       : "";
-    const overdue = this._task.due_state === "overdue";
-    const dueBadge = overdue
-      ? `<span class="status-badge overdue">Overdue</span>`
-      : `<span class="status-badge">${escapeHtml(this._task.due_state)}</span>`;
-
     const quickActions = this._task.quick_actions_enabled
       ? `
-        <div class="quick-actions">
+        <div class="quick-actions" role="group" aria-label="Quick outcomes for ${title}">
           ${this._task.completion_schema.outcomes
             .map(
               (outcome) => `
@@ -92,7 +96,7 @@ export class ReptileCareTaskListItem extends HTMLElement {
                   type="button"
                   data-action="quick-complete"
                   data-outcome-id="${escapeHtml(outcome.outcome_id)}"
-                  ${this._busy ? "disabled" : ""}
+                  ${this._task.ui.busy ? "disabled" : ""}
                 >
                   ${escapeHtml(outcome.display_name)}
                 </button>
@@ -102,10 +106,23 @@ export class ReptileCareTaskListItem extends HTMLElement {
         </div>
       `
       : `
-        <button class="action-button" type="button" data-action="complete" ${this._busy ? "disabled" : ""}>
+        <button
+          class="action-button primary-action"
+          type="button"
+          data-action="complete"
+          ${this._task.ui.busy ? "disabled" : ""}
+        >
           Complete
         </button>
       `;
+    const inlineError = this._task.ui.error
+      ? `<p class="inline-error" role="alert">${escapeHtml(this._task.ui.error)}</p>`
+      : "";
+    const busyIndicator = this._task.ui.busy
+      ? `<span class="busy-indicator" aria-live="polite">Saving…</span>`
+      : "";
+    const urgencyClass = escapeHtml(this._task.urgency_group);
+    const phase = escapeHtml(this._task.ui.phase);
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -116,73 +133,138 @@ export class ReptileCareTaskListItem extends HTMLElement {
         }
 
         .task {
-          border: 1px solid var(--divider-color);
-          border-radius: 18px;
+          display: grid;
+          gap: 0.9rem;
           padding: 1rem;
+          border: 1px solid color-mix(in srgb, var(--divider-color) 88%, transparent);
+          border-radius: 20px;
           background:
             linear-gradient(
               180deg,
-              color-mix(in srgb, var(--card-background-color) 94%, var(--primary-color)),
-              var(--card-background-color)
+              color-mix(in srgb, var(--card-background-color) 96%, transparent),
+              color-mix(in srgb, var(--secondary-background-color) 22%, var(--card-background-color))
             );
-          display: grid;
-          gap: 0.9rem;
+          transition:
+            opacity 180ms ease,
+            transform 180ms ease,
+            border-color 180ms ease,
+            box-shadow 180ms ease;
+        }
+
+        .task[data-urgency="overdue"] {
+          border-color: color-mix(in srgb, var(--error-color) 40%, var(--divider-color));
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--error-color) 12%, transparent);
+        }
+
+        .task[data-urgency="due"] {
+          border-color: color-mix(in srgb, var(--warning-color, #f0b400) 44%, var(--divider-color));
+        }
+
+        .task[data-phase="entering"] {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+
+        .task[data-phase="exiting"] {
+          opacity: 0;
+          transform: translateY(-8px);
+        }
+
+        .task[data-busy="true"] {
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary-color) 16%, transparent);
         }
 
         .header {
           display: grid;
-          grid-template-columns: auto 1fr auto;
-          align-items: start;
+          grid-template-columns: auto 1fr;
           gap: 0.9rem;
+          align-items: start;
         }
 
         .icon-wrap {
-          width: 2.25rem;
-          height: 2.25rem;
-          border-radius: 14px;
+          width: 2.6rem;
+          height: 2.6rem;
+          border-radius: 16px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+          background: color-mix(in srgb, var(--primary-color) 13%, transparent);
           color: var(--primary-color);
         }
 
-        .title {
-          font-size: 1rem;
-          font-weight: 700;
-          line-height: 1.35;
-          margin: 0;
+        .task[data-urgency="overdue"] .icon-wrap {
+          background: color-mix(in srgb, var(--error-color) 14%, transparent);
+          color: var(--error-color);
         }
 
-        .meta,
-        .due-line {
-          margin: 0.2rem 0 0;
-          color: var(--secondary-text-color);
-          font-size: 0.92rem;
-        }
-
-        .description {
-          margin: 0;
-          color: var(--secondary-text-color);
-          line-height: 1.45;
-        }
-
-        .timing-summary {
+        .title-row {
           display: flex;
           flex-wrap: wrap;
           gap: 0.55rem;
           align-items: center;
         }
 
-        .priority {
-          border-radius: 999px;
+        .title {
+          margin: 0;
+          font-size: 1rem;
+          font-weight: 700;
+          line-height: 1.35;
+        }
+
+        .status-badge,
+        .priority-badge {
+          display: inline-flex;
+          align-items: center;
+          min-height: 1.7rem;
           padding: 0.2rem 0.6rem;
-          background: color-mix(in srgb, var(--secondary-background-color) 80%, transparent);
-          color: var(--secondary-text-color);
+          border-radius: 999px;
           font-size: 0.76rem;
           font-weight: 700;
-          text-transform: uppercase;
           letter-spacing: 0.03em;
+        }
+
+        .status-badge {
+          background: color-mix(in srgb, var(--primary-color) 11%, transparent);
+          color: var(--primary-color);
+        }
+
+        .task[data-urgency="overdue"] .status-badge {
+          background: color-mix(in srgb, var(--error-color) 15%, transparent);
+          color: var(--error-color);
+        }
+
+        .task[data-urgency="due"] .status-badge {
+          background: color-mix(in srgb, var(--warning-color, #f0b400) 18%, transparent);
+          color: color-mix(in srgb, var(--warning-color, #f0b400) 88%, black);
+        }
+
+        .priority-badge {
+          background: color-mix(in srgb, var(--secondary-background-color) 70%, transparent);
+          color: var(--secondary-text-color);
+          text-transform: uppercase;
+        }
+
+        .meta,
+        .due-line,
+        .description {
+          margin: 0;
+          color: var(--secondary-text-color);
+        }
+
+        .due-line {
+          margin-top: 0.3rem;
+          font-weight: 600;
+          color: var(--primary-text-color);
+        }
+
+        .meta {
+          margin-top: 0.2rem;
+          font-size: 0.92rem;
+        }
+
+        .description {
+          line-height: 1.45;
+          font-size: 0.94rem;
         }
 
         .footer {
@@ -191,63 +273,77 @@ export class ReptileCareTaskListItem extends HTMLElement {
         }
 
         .actions,
-        .quick-actions {
+        .quick-actions,
+        .secondary-actions {
           display: flex;
           flex-wrap: wrap;
           gap: 0.55rem;
         }
 
-        .secondary-actions {
-          display: flex;
-          gap: 0.55rem;
+        .primary-action,
+        .quick-action-button {
+          background: color-mix(in srgb, var(--primary-color) 12%, var(--card-background-color));
+          border-color: color-mix(in srgb, var(--primary-color) 28%, var(--divider-color));
         }
 
-        .status-badge {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          min-height: 1.75rem;
-          padding: 0.15rem 0.55rem;
-          border-radius: 999px;
-          background: color-mix(in srgb, var(--primary-color) 10%, transparent);
-          color: var(--primary-color);
-          font-size: 0.78rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-        }
-
-        .status-badge.overdue {
-          background: color-mix(in srgb, var(--error-color) 14%, transparent);
+        .inline-error {
+          margin: 0;
+          padding: 0.7rem 0.8rem;
+          border-radius: 14px;
+          background: color-mix(in srgb, var(--error-color) 12%, transparent);
           color: var(--error-color);
+          font-size: 0.92rem;
+          line-height: 1.4;
         }
 
-        @media (max-width: 520px) {
+        @media (max-width: 720px) {
+          .task {
+            padding: 0.95rem;
+          }
+
           .header {
             grid-template-columns: auto 1fr;
           }
 
-          .priority {
-            justify-self: start;
+          .actions,
+          .quick-actions,
+          .secondary-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .quick-action-button:first-child:last-child,
+          .primary-action {
+            grid-column: 1 / -1;
           }
         }
       </style>
-      <article class="task">
+      <article
+        class="task"
+        data-urgency="${urgencyClass}"
+        data-phase="${phase}"
+        data-busy="${this._task.ui.busy ? "true" : "false"}"
+        aria-busy="${this._task.ui.busy ? "true" : "false"}"
+      >
         <div class="header">
           <span class="icon-wrap" aria-hidden="true">
-            <ha-icon icon="${escapeHtml(presentation.icon || "mdi:clipboard-text-clock-outline")}"></ha-icon>
+            <ha-icon icon="${escapeHtml(presentation.icon)}"></ha-icon>
           </span>
           <div>
-            <h3 class="title">${title}</h3>
+            <div class="title-row">
+              <h3 class="title">${title}</h3>
+              <span class="status-badge">${escapeHtml(dueStateLabel(this._task))}</span>
+              <span class="priority-badge">${escapeHtml(presentation.priority)}</span>
+            </div>
             <p class="due-line" title="${escapeHtml(absolute)}">Due ${escapeHtml(relative)}</p>
             <p class="meta">${escapeHtml(absolute)}</p>
             ${carePlanName}
           </div>
-          <span class="priority">${priority}</span>
         </div>
-        <div class="timing-summary">${dueBadge}</div>
         ${description}
-        <div class="footer" aria-label="${taskTitleLabel}">
+        ${inlineError}
+        <div class="footer">
+          ${busyIndicator}
           <div class="actions">
             ${quickActions}
           </div>
@@ -257,7 +353,7 @@ export class ReptileCareTaskListItem extends HTMLElement {
               type="button"
               data-action="skip"
               aria-label="Skip ${title}"
-              ${this._busy ? "disabled" : ""}
+              ${this._task.ui.busy ? "disabled" : ""}
             >
               Skip
             </button>
@@ -266,7 +362,7 @@ export class ReptileCareTaskListItem extends HTMLElement {
               type="button"
               data-action="details"
               aria-label="Open details for ${title}"
-              ${this._busy ? "disabled" : ""}
+              ${this._task.ui.busy ? "disabled" : ""}
             >
               Details
             </button>
@@ -282,4 +378,3 @@ export class ReptileCareTaskListItem extends HTMLElement {
 if (!customElements.get("reptilecare-task-list-item")) {
   customElements.define("reptilecare-task-list-item", ReptileCareTaskListItem);
 }
-

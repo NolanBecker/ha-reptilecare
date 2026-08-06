@@ -2,7 +2,7 @@ import { sharedCardStyles } from "../styles/reptilecare-styles.js";
 import { escapeHtml } from "../utils/html.js";
 import { formatDueDetails } from "../utils/time.js";
 
-function fieldInputMarkup(field, value) {
+function fieldInputMarkup(field, value, busy) {
   const escapedValue = escapeHtml(value ?? "");
   const label = escapeHtml(field.display_name);
   const description = field.description
@@ -22,6 +22,7 @@ function fieldInputMarkup(field, value) {
             step="any"
             data-field-id="${escapeHtml(field.field_id)}"
             value="${escapedValue}"
+            ${busy ? "disabled" : ""}
           />
           ${unit}
         </div>
@@ -39,6 +40,7 @@ function fieldInputMarkup(field, value) {
           type="text"
           data-field-id="${escapeHtml(field.field_id)}"
           value="${escapedValue}"
+          ${busy ? "disabled" : ""}
         />
         ${unit}
       </div>
@@ -109,7 +111,6 @@ export class ReptileCareTaskCompletionDialog extends HTMLElement {
     this.shadowRoot.querySelector("[data-close]")?.addEventListener("click", () => {
       this._dispatch("dialog-close");
     });
-
     this.shadowRoot.querySelector("[data-submit]")?.addEventListener("click", () => {
       this._dispatch("dialog-submit");
     });
@@ -149,16 +150,19 @@ export class ReptileCareTaskCompletionDialog extends HTMLElement {
     const errorMarkup = this._error
       ? `<p class="error-banner" role="alert">${escapeHtml(this._error)}</p>`
       : "";
+    const busyMarkup = this._busy
+      ? `<p class="busy-indicator" aria-live="polite">Saving completion…</p>`
+      : "";
 
     this.shadowRoot.innerHTML = `
       <style>
         ${sharedCardStyles}
 
         dialog {
-          width: min(32rem, calc(100vw - 2rem));
+          width: min(34rem, calc(100vw - 1.25rem));
           max-width: 100%;
           border: none;
-          border-radius: 20px;
+          border-radius: 22px;
           padding: 0;
           background: var(--card-background-color);
           color: var(--primary-text-color);
@@ -166,7 +170,7 @@ export class ReptileCareTaskCompletionDialog extends HTMLElement {
         }
 
         dialog::backdrop {
-          background: rgba(0, 0, 0, 0.42);
+          background: color-mix(in srgb, black 42%, transparent);
         }
 
         .dialog-shell {
@@ -184,11 +188,12 @@ export class ReptileCareTaskCompletionDialog extends HTMLElement {
 
         .dialog-title {
           margin: 0;
-          font-size: 1.1rem;
+          font-size: 1.08rem;
           line-height: 1.35;
         }
 
-        .dialog-meta {
+        .dialog-meta,
+        .dialog-description {
           margin: 0.3rem 0 0;
           color: var(--secondary-text-color);
           font-size: 0.92rem;
@@ -213,27 +218,29 @@ export class ReptileCareTaskCompletionDialog extends HTMLElement {
           color: var(--secondary-text-color);
         }
 
-        .outcomes {
+        .outcomes,
+        .field-grid {
           display: grid;
-          gap: 0.55rem;
+          gap: 0.75rem;
         }
 
         .outcome-option {
           display: grid;
-          gap: 0.25rem;
-          padding: 0.8rem;
+          gap: 0.3rem;
+          padding: 0.85rem;
           border: 1px solid var(--divider-color);
           border-radius: 16px;
         }
 
         .outcome-label {
           display: flex;
-          gap: 0.65rem;
+          gap: 0.7rem;
           align-items: start;
         }
 
-        .outcome-title {
-          font-weight: 600;
+        .outcome-title,
+        .field-label {
+          font-weight: 700;
         }
 
         .outcome-description,
@@ -244,18 +251,9 @@ export class ReptileCareTaskCompletionDialog extends HTMLElement {
           line-height: 1.45;
         }
 
-        .field-grid {
-          display: grid;
-          gap: 0.85rem;
-        }
-
         .field {
           display: grid;
           gap: 0.35rem;
-        }
-
-        .field-label {
-          font-weight: 600;
         }
 
         .field-input-wrap {
@@ -268,13 +266,11 @@ export class ReptileCareTaskCompletionDialog extends HTMLElement {
         .field-input,
         .notes-input {
           width: 100%;
-          box-sizing: border-box;
           border: 1px solid var(--divider-color);
           border-radius: 14px;
           background: var(--card-background-color);
           color: var(--primary-text-color);
-          padding: 0.75rem 0.85rem;
-          font: inherit;
+          padding: 0.8rem 0.85rem;
         }
 
         .notes-input {
@@ -289,7 +285,7 @@ export class ReptileCareTaskCompletionDialog extends HTMLElement {
 
         .error-banner {
           margin: 0;
-          padding: 0.75rem 0.85rem;
+          padding: 0.8rem 0.9rem;
           border-radius: 14px;
           background: color-mix(in srgb, var(--error-color) 14%, transparent);
           color: var(--error-color);
@@ -300,15 +296,6 @@ export class ReptileCareTaskCompletionDialog extends HTMLElement {
           justify-content: end;
           gap: 0.65rem;
           flex-wrap: wrap;
-        }
-
-        .dialog-button {
-          border: 1px solid var(--divider-color);
-          border-radius: 999px;
-          padding: 0.65rem 1rem;
-          cursor: pointer;
-          background: var(--card-background-color);
-          color: var(--primary-text-color);
         }
 
         .dialog-button.primary {
@@ -323,18 +310,24 @@ export class ReptileCareTaskCompletionDialog extends HTMLElement {
             <div>
               <h2 class="dialog-title">${escapeHtml(this._task.presentation.title)}</h2>
               <p class="dialog-meta">Due ${escapeHtml(relative)} · ${escapeHtml(absolute)}</p>
+              ${
+                this._task.presentation.description
+                  ? `<p class="dialog-description">${escapeHtml(this._task.presentation.description)}</p>`
+                  : ""
+              }
             </div>
             <button class="dialog-close" type="button" data-close aria-label="Close dialog" ${this._busy ? "disabled" : ""}>
               <ha-icon icon="mdi:close"></ha-icon>
             </button>
           </div>
+          ${busyMarkup}
           ${errorMarkup}
           ${
             outcomes.length
               ? `
                 <section>
                   <h3 class="section-title">Outcome</h3>
-                  <div class="outcomes">
+                  <div class="outcomes" role="radiogroup" aria-label="Completion outcomes">
                     ${outcomes
                       .map(
                         (outcome) => `
@@ -372,7 +365,7 @@ export class ReptileCareTaskCompletionDialog extends HTMLElement {
                   <h3 class="section-title">Structured fields</h3>
                   <div class="field-grid">
                     ${contextFields
-                      .map((field) => fieldInputMarkup(field, this._fieldValues[field.field_id]))
+                      .map((field) => fieldInputMarkup(field, this._fieldValues[field.field_id], this._busy))
                       .join("")}
                   </div>
                 </section>
@@ -411,4 +404,3 @@ if (!customElements.get("reptilecare-task-completion-dialog")) {
     ReptileCareTaskCompletionDialog,
   );
 }
-

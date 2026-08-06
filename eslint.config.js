@@ -25,6 +25,7 @@ export default [
       ecmaVersion: "latest",
       sourceType: "module",
       globals: {
+        ...globals.browser,
         ...globals.node,
       },
     },

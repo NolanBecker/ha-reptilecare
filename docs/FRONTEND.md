@@ -5,6 +5,8 @@ ReptileCare now ships its first production-facing frontend module: the
 
 This branch establishes the browser-side structure that future frontend work
 can reuse without reshuffling files or moving business logic back into cards.
+It also turns **Today's Care** into a more polished, production-quality daily
+interaction surface.
 
 ## Goals
 
@@ -18,6 +20,8 @@ The frontend layer should:
 - reuse small frontend-side services, models, and dialogs
 - remain compatible with future cards such as Timeline, Health, and Summary
   views
+- feel native to Home Assistant while still reading as calm, warm, and clear
+- prioritize one-handed mobile use and fast scanning
 
 The frontend layer should not:
 
@@ -79,6 +83,40 @@ On load, the card:
 4. combines those task records with existing per-reptile entity state
 5. renders loading, summary, empty, error, or task-list states
 
+## Interaction philosophy
+
+The card is optimized to answer one question quickly:
+
+`What does this reptile need right now?`
+
+To do that, it emphasizes:
+
+- a compact but informative header
+- urgency-based grouping
+- quick actions for simple outcomes
+- minimal taps on mobile
+- per-task progress feedback instead of whole-card blocking
+- empty states that still feel informative rather than broken
+
+## Header and grouping
+
+The polished card header now surfaces:
+
+- reptile name
+- optional species label when available from existing entity state
+- current pending-task count
+- overdue count when relevant
+- a status chip such as `All Caught Up`, `Due Today`, or `Overdue`
+
+Tasks are grouped into:
+
+- Overdue
+- Due Now
+- Upcoming Today
+- Future
+
+This keeps the most urgent work visually closest to the top of the card.
+
 ## Task display
 
 Each task row shows:
@@ -102,6 +140,9 @@ When overdue work exists, the card elevates that state with a warning summary
 such as:
 
 - `⚠️ Pixel needs attention`
+
+Task rows now also use clearer urgency styling, larger tap targets, and
+per-task status labels so icons are never the only state indicator.
 
 ## Quick actions
 
@@ -127,6 +168,10 @@ the `completion_schema` returned by `reptilecare.get_tasks`.
 If required structured fields exist, the card always uses the completion dialog
 instead of rendering quick actions directly.
 
+When quick actions are not appropriate, the card uses a single `Complete`
+button that opens the dialog without requiring task-type-specific frontend
+logic.
+
 ## Completion dialog
 
 When a task has more than three outcomes or requires structured input, the card
@@ -147,6 +192,20 @@ focus inside the modal while open.
 Structured fields are serialized into `outcome_metadata`.
 Keeper notes are sent through the `notes` field.
 
+## Completion experience
+
+Resolution feedback now stays scoped to the affected task:
+
+- only the active task becomes busy
+- the active task shows progress feedback
+- successful completions animate task removal
+- generated follow-up tasks animate in
+- backend failures restore the task and show inline error feedback
+
+The card still performs a silent reconciliation refresh after local optimistic
+updates so frontend state stays aligned with the backend without feeling
+laggy.
+
 ## Refresh behavior
 
 The card refreshes when:
@@ -165,6 +224,8 @@ Home Assistant dispatcher signals and then reflected through the existing
 ReptileCare entity layer.
 
 The card does not implement a separate polling or scheduling layer.
+
+Rapid state changes are coalesced so the card avoids redundant refresh work.
 
 ## Service contracts used by the card
 
@@ -191,6 +252,47 @@ repositories directly.
 The card also watches existing ReptileCare sensor, binary sensor, and button
 entities for the selected reptile so it can refresh after backend-driven task
 generation or resolution without duplicating state derivation rules.
+
+## Accessibility
+
+The polished card is designed to support:
+
+- keyboard navigation
+- visible focus rings
+- screen-reader-friendly live regions
+- text-based urgency labels
+- sufficient touch target sizes
+- reduced-motion preferences
+
+The completion dialog continues to rely on the platform dialog element and
+keeps semantic form controls for outcomes, notes, and structured fields.
+
+## Mobile recommendations
+
+The layout now favors narrow dashboards first:
+
+- actions wrap instead of forcing horizontal scrolling
+- task buttons stay comfortably tappable
+- header metadata stacks cleanly on smaller widths
+- grouped sections remain readable in single-column dashboards
+
+Recommended Home Assistant usage:
+
+- place the card in a single-column dashboard section on phones
+- avoid placing it beside dense multi-entity grids on narrow breakpoints
+- prefer one card instance per reptile for the clearest daily workflow
+
+## Screenshots
+
+Screenshot placeholders:
+
+- polished header with due-state chip
+- grouped overdue and due-now sections
+- quick-action task row
+- completion dialog on mobile
+
+Real screenshots should be added in a future documentation pass once the UI is
+captured from a live Home Assistant instance.
 
 ## Future cards
 
