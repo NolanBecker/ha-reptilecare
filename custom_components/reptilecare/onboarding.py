@@ -231,8 +231,9 @@ def _slugify(value: str) -> str | None:
 
 def _combined_notes(nickname: str | None, notes: str | None) -> str | None:
     parts = []
-    if nickname:
-        parts.append(f"Nickname: {nickname.strip()}")
+    normalized_nickname = _optional_str(nickname)
+    if normalized_nickname is not None:
+        parts.append(f"Nickname: {normalized_nickname}")
     if notes and notes.strip():
         parts.append(notes.strip())
     if not parts:

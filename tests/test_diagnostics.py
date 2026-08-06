@@ -26,6 +26,8 @@ async def test_diagnostics(hass: HomeAssistant) -> None:
         "runtime": {
             "event_count": 0,
             "reptile_count": 0,
+            "species_available_count": 5,
+            "built_in_care_plan_count": 7,
             "event_storage": "HomeAssistantCareEventStore",
             "entity_projection": {
                 "entity_count_by_platform": {

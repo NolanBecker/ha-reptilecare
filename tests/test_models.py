@@ -19,6 +19,7 @@ def test_event_types_are_stable() -> None:
         "photo",
         "shed",
         "spot_clean",
+        "water_change",
         "weight",
     }
 
