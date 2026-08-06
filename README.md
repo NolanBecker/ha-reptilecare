@@ -39,7 +39,8 @@ The current foundation provides:
 - Per-reptile Home Assistant devices with compact care-summary sensors, binary
   sensors, and a task-generation button
 - A bundled "Today's Care" Lovelace card that loads from the integration and
-  resolves tasks through the public service layer
+  resolves tasks through the public service layer with direct quick actions,
+  dynamic completion dialogs, and entity-backed refresh behavior
 - A validated multi-reptile repository with immutable keeper-owned records
 - Separate, versioned persistence for reptiles and CareEvent history
 - Versioned persistent CareEvent history backed by Home Assistant storage
@@ -273,8 +274,8 @@ The card is served by the integration itself and retrieves actionable tasks
 through the existing `reptilecare.get_tasks` and `reptilecare.resolve_task`
 services rather than bypassing the public application API.
 
-See [Frontend](docs/FRONTEND.md) for card configuration, lifecycle, and
-completion-dialog behavior.
+See [Frontend](docs/FRONTEND.md) for card configuration, lifecycle, empty and
+overdue states, quick-action behavior, and completion-dialog behavior.
 
 Pixel, a Gargoyle Gecko, is the first development reptile and will guide early
 use cases. ReptileCare is intentionally designed to support many individual

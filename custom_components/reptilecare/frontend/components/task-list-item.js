@@ -69,6 +69,10 @@ export class ReptileCareTaskListItem extends HTMLElement {
     const presentation = this._task.presentation;
     const priority = escapeHtml(presentation.priority);
     const title = escapeHtml(presentation.title);
+    const taskTitleLabel = escapeHtml(`Actions for ${presentation.title}`);
+    const carePlanName = presentation.care_plan_display_name
+      ? `<p class="meta">${escapeHtml(presentation.care_plan_display_name)}</p>`
+      : "";
     const description = presentation.description
       ? `<p class="description">${escapeHtml(presentation.description)}</p>`
       : "";
@@ -163,6 +167,13 @@ export class ReptileCareTaskListItem extends HTMLElement {
           line-height: 1.45;
         }
 
+        .timing-summary {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.55rem;
+          align-items: center;
+        }
+
         .priority {
           border-radius: 999px;
           padding: 0.2rem 0.6rem;
@@ -230,20 +241,33 @@ export class ReptileCareTaskListItem extends HTMLElement {
             <h3 class="title">${title}</h3>
             <p class="due-line" title="${escapeHtml(absolute)}">Due ${escapeHtml(relative)}</p>
             <p class="meta">${escapeHtml(absolute)}</p>
+            ${carePlanName}
           </div>
           <span class="priority">${priority}</span>
         </div>
-        <div>${dueBadge}</div>
+        <div class="timing-summary">${dueBadge}</div>
         ${description}
-        <div class="footer">
+        <div class="footer" aria-label="${taskTitleLabel}">
           <div class="actions">
             ${quickActions}
           </div>
           <div class="secondary-actions">
-            <button class="action-button" type="button" data-action="skip" ${this._busy ? "disabled" : ""}>
+            <button
+              class="action-button"
+              type="button"
+              data-action="skip"
+              aria-label="Skip ${title}"
+              ${this._busy ? "disabled" : ""}
+            >
               Skip
             </button>
-            <button class="action-button" type="button" data-action="details" ${this._busy ? "disabled" : ""}>
+            <button
+              class="action-button"
+              type="button"
+              data-action="details"
+              aria-label="Open details for ${title}"
+              ${this._busy ? "disabled" : ""}
+            >
               Details
             </button>
           </div>
