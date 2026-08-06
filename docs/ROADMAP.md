@@ -34,10 +34,9 @@ Allow keepers to create and maintain multiple reptile profiles.
 - Pixel, a Gargoyle Gecko, as the first complete development profile
 - Migration-safe persistence for reptile profiles
 
-The phase now has two domain foundations: the versioned `SpeciesProfile`
-registry for shared husbandry reference data, and the persistent
-`ReptileRepository` for immutable keeper-owned animal records. User-facing
-creation and editing workflows remain future work.
+The phase now also includes a first-run onboarding path and a built-in content
+catalog so new users can create their first reptile, choose a species, install
+recommended care plans, and generate initial tasks without Developer Tools.
 
 ### Phase 3 — Care Plans
 
@@ -128,6 +127,13 @@ frontend-foundation-driven:
 - dashboard guidance for existing reptile dashboards
 - a bundled Today's Care custom Lovelace card
 - reusable frontend modules for future cards and dialogs
+
+The integration lifecycle milestone now also includes:
+
+- first-run onboarding through config flow
+- a reusable built-in species and recommended-care catalog
+- an options-flow management hub
+- optional demo-data import
 
 ### Phase 6 — Dashboard Cards
 

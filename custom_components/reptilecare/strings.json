@@ -5,8 +5,79 @@
     },
     "step": {
       "user": {
-        "description": "Set up ReptileCare. Reptiles and CareEvents will be added in future releases.",
-        "title": "Set up ReptileCare"
+        "description": "Welcome to ReptileCare. This guided setup will help you create your first reptile, choose a built-in species, and install recommended care plans.",
+        "title": "Welcome to ReptileCare"
+      },
+      "reptile": {
+        "description": "Create your first reptile. Additional reptiles can be added later from the integration options.",
+        "title": "Create Reptile"
+      },
+      "species": {
+        "description": "Choose a species from the built-in catalog.",
+        "title": "Choose Species"
+      },
+      "recommended_care": {
+        "description": "Select the recommended care plans you want to install for this reptile.",
+        "title": "Recommended Care"
+      },
+      "initial_tasks": {
+        "description": "Generate today's care now, or wait until later.",
+        "title": "Generate Initial Tasks"
+      },
+      "finish": {
+        "description": "Finish setup and let ReptileCare create your first reptile, install the selected care plans, and prepare your dashboard.",
+        "title": "Finish Setup"
+      }
+    },
+    "selector": {
+      "reptile_sex": {
+        "options": {
+          "female": "Female",
+          "male": "Male",
+          "unknown": "Unknown"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "ReptileCare Hub",
+        "description": "Manage reptiles, built-in content, demo data, and general settings.",
+        "menu_options": {
+          "add_reptile": "Add Reptile",
+          "install_builtin_content": "Species Library",
+          "import_demo_data": "Import Demo Data",
+          "general_settings": "General Settings"
+        }
+      },
+      "reptile": {
+        "description": "Create another reptile without using internal identifiers.",
+        "title": "Add Reptile"
+      },
+      "species": {
+        "description": "Choose a species from the built-in catalog.",
+        "title": "Choose Species"
+      },
+      "recommended_care": {
+        "description": "Select the recommended care plans to install for this reptile.",
+        "title": "Recommended Care"
+      },
+      "initial_tasks": {
+        "description": "Generate today's care for the new reptile now, or wait until later.",
+        "title": "Generate Initial Tasks"
+      },
+      "install_builtin_content": {
+        "description": "The built-in species library is installed automatically and stays available for onboarding and future reptiles.",
+        "title": "Built-in Content"
+      },
+      "import_demo_data": {
+        "description": "Install optional sample data, including Pixel, example care plans, sample history, and pending tasks.",
+        "title": "Import Demo Data"
+      },
+      "general_settings": {
+        "description": "Adjust general ReptileCare runtime behavior.",
+        "title": "General Settings"
       }
     }
   },

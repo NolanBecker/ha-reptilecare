@@ -8,20 +8,22 @@ presents the result.
 ## Domain flow
 
 ```text
-SpeciesProfile --> Reptile ----+
-                               |
-TaskTemplate ----------------> CarePlans --> CareTasks --> CareEngine --> CareEvents
-        |                           ^
-        v                           |
- WorkflowGraphs --------------------+
-                               ↓
-                             Timeline
-                               ↓
-                           Coordinator
-                               ↓
-                  Home Assistant Services
-                               ↓
-                 Home Assistant Entity Projections
+ Built-in Content ---> SpeciesProfile --> Reptile ----+
+        |                                             |
+        +--> Recommended Care ----------------------> CarePlans --> CareTasks --> CareEngine --> CareEvents
+        |                                                     ^
+TaskTemplate --------------------------------------------------+
+        |                                                     |
+        v                                                     |
+ WorkflowGraphs ----------------------------------------------+
+                                                         ↓
+                                                       Timeline
+                                                         ↓
+                                                     Coordinator
+                                                         ↓
+                                              Home Assistant Services
+                                                         ↓
+                                            Home Assistant Entity Projections
 ```
 
 This is a dependency direction, not merely a screen flow. Each layer has a
@@ -31,11 +33,11 @@ or below it.
 The [core domain design proposal](CORE_DOMAIN_DESIGN.md) extends these accepted
 boundaries with implementation-ready recommendations for `SpeciesProfile`,
 `TaskTemplate`, task outcomes, workflow-generated follow-ups, persistence, and
-Home Assistant adapters. The current implementation now covers persistent task
-generation, the first end-to-end CareEngine execution loop, a thin Home
-Assistant service adapter over those capabilities, compact per-reptile entity
-projections, and the first bundled frontend card that consumes the public
-service layer.
+Home Assistant adapters. The current implementation now covers built-in content
+loading, first-run onboarding, persistent task generation, the first end-to-end
+CareEngine execution loop, a thin Home Assistant service adapter over those
+capabilities, compact per-reptile entity projections, and the first bundled
+frontend card that consumes the public service layer.
 
 ## Reptile
 
@@ -63,11 +65,13 @@ Assistant sensor entities. A profile is separate from a Reptile: selecting a
 profile must not replace the individual animal's stable identity or silently
 overwrite reptile-specific CarePlan choices.
 
-Built-in JSON profiles are loaded through a pure-domain registry during
-config-entry setup. The registry is exposed in config-entry runtime data for
-future CarePlan and user-interface layers. It does not participate in
-coordinator polling, event history, or Home Assistant entity mapping. See
-[Species profiles](SPECIES_PROFILES.md) for its validation and sourcing policy.
+Built-in species packages are now loaded through the content catalog and then
+projected into the existing SpeciesProfile domain model during config-entry
+setup. The registry is exposed in config-entry runtime data for future
+CarePlan and user-interface layers. It does not participate in coordinator
+polling, event history, or Home Assistant entity mapping. See
+[Species profiles](SPECIES_PROFILES.md) and [Content](CONTENT.md) for the
+validation and sourcing policy.
 
 `ProfileOrigin` provides a typed, serialized provenance marker. Bundled
 profiles use `builtin`, which is the only currently supported source. Reserved
@@ -265,6 +269,23 @@ The current presentation adapters are:
 Future cards should keep business logic in reusable frontend-side services and
 continue to rely on the public Home Assistant service layer rather than
 querying repositories directly.
+
+## Onboarding and content
+
+The onboarding flow is an adapter over the existing engine. It captures a
+friendly first-run request, defers actual record creation until setup, and then
+creates reptiles, care plans, and optional initial tasks through the normal
+repositories and task generator.
+
+This preserves the engine boundaries:
+
+- onboarding does not write raw storage
+- onboarding does not evaluate workflows
+- onboarding does not create custom task logic
+- onboarding does not bypass repositories
+
+The same content bundle is reusable later from the options flow, diagnostics,
+and future UI surfaces.
 
 ## Frontend foundation
 

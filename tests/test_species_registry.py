@@ -21,13 +21,24 @@ def _profile(profile_id: str) -> SpeciesProfile:
 
 
 def test_builtin_registry_loads_gargoyle_gecko() -> None:
-    """The packaged Gargoyle Gecko profile loads without invented care data."""
+    """The packaged Gargoyle Gecko profile loads from the built-in content catalog."""
     registry = SpeciesProfileRegistry.load_builtin_profiles()
     profile = registry.get("builtin:gargoyle_gecko")
     assert profile.display_name == "Gargoyle Gecko"
     assert profile.scientific_name == "Rhacodactylus auriculatus"
-    assert profile.default_environmental_targets.targets == ()
-    assert profile.default_task_template_ids == ()
+    assert [
+        target.target_id for target in profile.default_environmental_targets.targets
+    ] == [
+        "daytime_temperature",
+        "humidity",
+        "nighttime_temperature",
+    ]
+    assert profile.default_task_template_ids == (
+        "builtin:feed_fruit",
+        "builtin:spot_clean",
+        "builtin:change_water",
+        "builtin:deep_clean",
+    )
     assert profile.references == ()
     assert profile.origin is ProfileOrigin.BUILTIN
 

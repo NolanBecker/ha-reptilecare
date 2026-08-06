@@ -1,0 +1,48 @@
+{
+  "template_id": "builtin:change_water",
+  "display_name": "Change Water",
+  "description": "Replace the enclosure water and confirm clean drinking water is available.",
+  "category": "environment",
+  "icon": "mdi:cup-water",
+  "expected_outcomes": [
+    {
+      "outcome_id": "completed",
+      "display_name": "Completed",
+      "description": "The water was changed successfully."
+    },
+    {
+      "outcome_id": "partially_completed",
+      "display_name": "Partially Completed",
+      "description": "Some water maintenance was performed, but more work remains."
+    },
+    {
+      "outcome_id": "skipped",
+      "display_name": "Skipped",
+      "description": "The water change was intentionally skipped."
+    }
+  ],
+  "context_fields": [
+    {
+      "field_id": "notes",
+      "display_name": "Notes",
+      "field_type": "text",
+      "required": false,
+      "metadata": {}
+    }
+  ],
+  "default_priority": "normal",
+  "estimated_duration": 5,
+  "completion_behavior": {
+    "create_care_event": true,
+    "supports_follow_up_task": false,
+    "supports_workflow": false,
+    "metadata": {
+      "event_type": "water_change"
+    }
+  },
+  "metadata": {
+    "audience": "core"
+  },
+  "schema_version": 1,
+  "template_version": 1
+}

@@ -77,6 +77,12 @@ force-sort-within-sections = true
 packages = []
 
 [tool.setuptools.data-files]
+"custom_components/reptilecare/content/care_plans" = [
+  "custom_components/reptilecare/content/care_plans/*.yaml",
+]
+"custom_components/reptilecare/content/species" = [
+  "custom_components/reptilecare/content/species/*.yaml",
+]
 "custom_components/reptilecare/profiles" = [
   "custom_components/reptilecare/profiles/*.json",
 ]

@@ -1000,6 +1000,7 @@ async def _async_handle_get_timeline(call: ServiceCall) -> dict[str, Any]:
 async def _async_handle_system_health(call: ServiceCall) -> dict[str, Any]:
     runtime = _runtime(call.hass)
     _ = call
+    content = getattr(runtime, "content", None)
     return {
         "integration_version": INTEGRATION_VERSION,
         "schema_version": {
@@ -1008,6 +1009,10 @@ async def _async_handle_system_health(call: ServiceCall) -> dict[str, Any]:
             "care_tasks": CARE_TASK_SCHEMA_VERSION,
             "care_events": f"{STORAGE_VERSION}.{STORAGE_MINOR_VERSION}",
         },
+        "species_available_count": 0 if content is None else len(content.species.all()),
+        "built_in_care_plan_count": 0
+        if content is None
+        else len(content.care_plans.all()),
         "species_profile_count": len(runtime.species_profiles.all()),
         "reptile_count": len(runtime.reptile_repository.all()),
         "care_plan_count": len(runtime.care_plan_repository.all()),

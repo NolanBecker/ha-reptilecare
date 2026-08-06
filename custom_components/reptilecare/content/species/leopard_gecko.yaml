@@ -1,0 +1,39 @@
+species_id: builtin:leopard_gecko
+display_name: Leopard Gecko
+scientific_name: Eublepharis macularius
+category: gecko
+description: A terrestrial gecko that benefits from simple recurring feeding and cleaning routines.
+aliases:
+  - leo
+icon: mdi:lizard
+husbandry_metadata:
+  authoritative_today: environmental_targets
+  notes: Placeholder husbandry metadata can be expanded in future releases.
+environmental_targets:
+  - target_id: warm_hide_temperature
+    display_name: Warm Hide Temperature
+    minimum: 88
+    maximum: 92
+    unit: F
+  - target_id: cool_side_temperature
+    display_name: Cool Side Temperature
+    minimum: 72
+    maximum: 78
+    unit: F
+  - target_id: humidity
+    display_name: Humidity
+    minimum: 30
+    maximum: 40
+    unit: "%"
+recommended_care_plan_ids:
+  - builtin:feed_insects_every_2_days
+  - builtin:spot_clean_daily
+  - builtin:change_water_daily
+  - builtin:deep_clean_monthly
+default_task_template_ids:
+  - builtin:feed_insects
+  - builtin:spot_clean
+  - builtin:change_water
+  - builtin:deep_clean
+schema_version: 1
+package_version: 1
