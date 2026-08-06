@@ -1,0 +1,73 @@
+{
+  "template_id": "builtin:feed_prey",
+  "display_name": "Feed Prey",
+  "description": "Offer an appropriately sized prey item as a reusable feeding action.",
+  "category": "feeding",
+  "icon": "mdi:food-drumstick",
+  "expected_outcomes": [
+    {
+      "outcome_id": "ate_normally",
+      "display_name": "Ate Normally",
+      "description": "The reptile accepted the prey item normally."
+    },
+    {
+      "outcome_id": "ate_partially",
+      "display_name": "Ate Partially",
+      "description": "The feeding began but was not fully completed."
+    },
+    {
+      "outcome_id": "refused",
+      "display_name": "Refused",
+      "description": "The reptile refused the offered prey item."
+    },
+    {
+      "outcome_id": "skipped",
+      "display_name": "Skipped",
+      "description": "The feeding was intentionally skipped."
+    },
+    {
+      "outcome_id": "cancelled",
+      "display_name": "Cancelled",
+      "description": "The feeding was cancelled before completion."
+    }
+  ],
+  "context_fields": [
+    {
+      "field_id": "prey_type",
+      "display_name": "Prey Type",
+      "field_type": "text",
+      "required": false,
+      "metadata": {}
+    },
+    {
+      "field_id": "prey_size",
+      "display_name": "Prey Size",
+      "field_type": "text",
+      "required": false,
+      "metadata": {}
+    },
+    {
+      "field_id": "notes",
+      "display_name": "Notes",
+      "field_type": "text",
+      "required": false,
+      "metadata": {}
+    }
+  ],
+  "default_priority": "high",
+  "estimated_duration": 15,
+  "completion_behavior": {
+    "create_care_event": true,
+    "supports_follow_up_task": true,
+    "supports_workflow": true,
+    "workflow_graph_id": "builtin:feeding_cycle",
+    "metadata": {
+      "event_type": "feeding"
+    }
+  },
+  "metadata": {
+    "audience": "core"
+  },
+  "schema_version": 1,
+  "template_version": 1
+}

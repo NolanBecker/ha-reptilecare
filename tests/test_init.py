@@ -34,6 +34,8 @@ async def test_setup_and_unload_entry(hass: HomeAssistant) -> None:
     assert entry.runtime_data.coordinator.data.events == ()
     assert entry.runtime_data.coordinator.timeline.all_events() == ()
     assert entry.runtime_data.timeline.all_events() == ()
+    assert len(entry.runtime_data.content.species.all()) == 5
+    assert entry.runtime_data.content.species.contains("builtin:gargoyle_gecko")
     assert entry.runtime_data.species_profiles.contains("builtin:gargoyle_gecko")
     assert entry.runtime_data.task_templates.contains("builtin:feed_fruit")
     assert entry.runtime_data.workflow_graphs.contains("builtin:feeding_cycle")
@@ -59,6 +61,7 @@ async def test_reload_rebuilds_species_registry(hass: HomeAssistant) -> None:
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     original_registry = entry.runtime_data.species_profiles
+    original_content = entry.runtime_data.content
     original_repository = entry.runtime_data.reptile_repository
     original_templates = entry.runtime_data.task_templates
     original_workflows = entry.runtime_data.workflow_graphs
@@ -76,6 +79,7 @@ async def test_reload_rebuilds_species_registry(hass: HomeAssistant) -> None:
     await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done()
     assert entry.runtime_data.species_profiles is not original_registry
+    assert entry.runtime_data.content is not original_content
     assert entry.runtime_data.reptile_repository is not original_repository
     assert entry.runtime_data.task_templates is not original_templates
     assert entry.runtime_data.workflow_graphs is not original_workflows
@@ -89,6 +93,45 @@ async def test_reload_rebuilds_species_registry(hass: HomeAssistant) -> None:
     assert entry.runtime_data.workflow_graphs.contains("builtin:feeding_cycle")
     assert entry.runtime_data.care_plan_repository.all() == ()
     assert entry.runtime_data.care_task_repository.all() == ()
+
+
+async def test_setup_applies_pending_onboarding_request(hass: HomeAssistant) -> None:
+    """Setup materializes reptiles and care plans from pending onboarding data."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title=INTEGRATION_NAME,
+        data={
+            "onboarding": {
+                "display_name": "Pixel",
+                "nickname": "Pix",
+                "species_id": "builtin:gargoyle_gecko",
+                "selected_care_plan_ids": [
+                    "builtin:feed_fruit_every_2_days",
+                    "builtin:spot_clean_daily",
+                ],
+                "generate_initial_tasks": True,
+                "notes": "First reptile",
+            }
+        },
+    )
+    entry.add_to_hass(hass)
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    reptiles = entry.runtime_data.reptile_repository.all()
+    care_plans = entry.runtime_data.care_plan_repository.all()
+    tasks = entry.runtime_data.care_task_repository.all()
+
+    assert len(reptiles) == 1
+    assert reptiles[0].display_name == "Pixel"
+    assert reptiles[0].slug == "pixel"
+    assert len(care_plans) == 2
+    assert {plan.display_name for plan in care_plans} == {
+        "Feed Fruit Mix",
+        "Spot Cleaning",
+    }
+    assert tasks
 
 
 async def test_setup_runs_reconciliation_before_task_generation(

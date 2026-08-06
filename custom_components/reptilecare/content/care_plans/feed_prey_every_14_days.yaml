@@ -1,0 +1,11 @@
+content_id: builtin:feed_prey_every_14_days
+display_name: Feed Prey
+description: Offer an appropriately sized prey meal every two weeks.
+task_template_id: builtin:feed_prey
+workflow_id: builtin:feeding_cycle
+schedule:
+  every: 14
+  unit: days
+priority: high
+metadata:
+  audience: onboarding

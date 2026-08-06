@@ -1,0 +1,39 @@
+species_id: builtin:ball_python
+display_name: Ball Python
+scientific_name: Python regius
+category: snake
+description: A calm terrestrial python commonly kept as a beginner-friendly snake.
+aliases:
+  - royal python
+icon: mdi:snake
+husbandry_metadata:
+  authoritative_today: environmental_targets
+  notes: Placeholder husbandry metadata can be expanded in future releases.
+environmental_targets:
+  - target_id: warm_side_temperature
+    display_name: Warm Side Temperature
+    minimum: 88
+    maximum: 92
+    unit: F
+  - target_id: cool_side_temperature
+    display_name: Cool Side Temperature
+    minimum: 76
+    maximum: 80
+    unit: F
+  - target_id: humidity
+    display_name: Humidity
+    minimum: 55
+    maximum: 70
+    unit: "%"
+recommended_care_plan_ids:
+  - builtin:feed_prey_every_14_days
+  - builtin:spot_clean_daily
+  - builtin:change_water_daily
+  - builtin:deep_clean_monthly
+default_task_template_ids:
+  - builtin:feed_prey
+  - builtin:spot_clean
+  - builtin:change_water
+  - builtin:deep_clean
+schema_version: 1
+package_version: 1

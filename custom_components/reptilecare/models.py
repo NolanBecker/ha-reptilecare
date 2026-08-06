@@ -14,6 +14,7 @@ from uuid import UUID, uuid4
 if TYPE_CHECKING:
     from .application import ReptileCareEventPublisher
     from .application.care_engine import CareEngine, WorkflowEvaluator
+    from .content.loader import BuiltinContentBundle
     from .coordinator import ReptileCareCoordinator
     from .domain.care_plan import CarePlanRepository
     from .domain.care_task import CareTaskRepository
@@ -32,6 +33,7 @@ class CareEventType(StrEnum):
 
     FEEDING = "feeding"
     FOOD_REMOVED = "food_removed"
+    WATER_CHANGE = "water_change"
     SPOT_CLEAN = "spot_clean"
     DEEP_CLEAN = "deep_clean"
     WEIGHT = "weight"
@@ -153,6 +155,7 @@ class ReptileCareRuntimeData:
 
     coordinator: ReptileCareCoordinator
     event_store: CareEventStore
+    content: BuiltinContentBundle
     species_profiles: SpeciesProfileRegistry
     reptile_repository: ReptileRepository
     task_templates: TaskTemplateRegistry

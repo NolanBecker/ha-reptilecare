@@ -1,0 +1,39 @@
+species_id: builtin:corn_snake
+display_name: Corn Snake
+scientific_name: Pantherophis guttatus
+category: snake
+description: A hardy colubrid often recommended for first-time snake keepers.
+aliases:
+  - red rat snake
+icon: mdi:snake
+husbandry_metadata:
+  authoritative_today: environmental_targets
+  notes: Placeholder husbandry metadata can be expanded in future releases.
+environmental_targets:
+  - target_id: warm_side_temperature
+    display_name: Warm Side Temperature
+    minimum: 84
+    maximum: 88
+    unit: F
+  - target_id: cool_side_temperature
+    display_name: Cool Side Temperature
+    minimum: 72
+    maximum: 76
+    unit: F
+  - target_id: humidity
+    display_name: Humidity
+    minimum: 40
+    maximum: 55
+    unit: "%"
+recommended_care_plan_ids:
+  - builtin:feed_prey_every_7_days
+  - builtin:spot_clean_daily
+  - builtin:change_water_daily
+  - builtin:deep_clean_monthly
+default_task_template_ids:
+  - builtin:feed_prey
+  - builtin:spot_clean
+  - builtin:change_water
+  - builtin:deep_clean
+schema_version: 1
+package_version: 1

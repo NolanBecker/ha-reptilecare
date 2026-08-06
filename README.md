@@ -13,18 +13,21 @@ reptile needs today.
 > [!NOTE]
 > ReptileCare currently provides domain, persistence, CareTask generation,
 > CareEngine execution, Home Assistant services, and the first per-reptile
-> entity layer, plus the first bundled Lovelace frontend card. It does not yet
-> expose reptile management UI, notifications, or the future ReptileCare
-> Center.
+> entity layer, a built-in onboarding flow, a packaged species/content
+> catalog, and the first bundled Lovelace frontend card. It does not yet
+> expose the future ReptileCare Center or notification workflows.
 
 ## Features
 
 The current foundation provides:
 
 - UI configuration through Home Assistant's config flow
+- Friendly first-run onboarding with built-in species selection and recommended
+  care-plan installation
 - Safe setup, reload, and unload behavior
 - An event-driven `DataUpdateCoordinator` with no periodic polling
 - Immutable event and reptile domain models
+- A reusable built-in content catalog for species and recommended care packages
 - A versioned species-profile domain model and built-in profile registry
 - A versioned task-template domain model and built-in task template registry
 - A versioned workflow-graph domain model and built-in workflow graph registry
@@ -181,6 +184,10 @@ Completing a CareTask records an immutable CareEvent; Timeline and Coordinator
 layers derive the information exposed to Home Assistant. CareEvents are the
 historical audit log, not the primary user interaction.
 
+The integration now also separates **engine** from **content**. Repositories,
+CareEngine, and workflow execution remain in the engine layer; built-in species
+and recommended care packages live in the content layer and drive onboarding.
+
 Reusable `TaskTemplate` definitions now sit between shared reference data and
 future CarePlans. They describe what kind of action exists without attaching
 that action to a reptile, schedule, or workflow runtime.
@@ -209,6 +216,10 @@ and application layers. Notifications and richer UI remain future work.
   boundaries for profiles, plans, tasks, outcomes, events, and workflows
 - [Species profiles](docs/SPECIES_PROFILES.md) — profile schema, validation,
   sourcing policy, and compatibility rules
+- [Content](docs/CONTENT.md) — built-in catalog structure, species packages,
+  care-plan packages, and future extensibility
+- [Onboarding](docs/ONBOARDING.md) — first-run wizard, recommended care
+  installation, options flow, and demo data
 - [Task templates](docs/TASK_TEMPLATES.md) — reusable care-action definitions,
   typed outcomes, context fields, and registry behavior
 - [Workflow graphs](docs/WORKFLOW_GRAPHS.md) — reusable post-outcome behavior

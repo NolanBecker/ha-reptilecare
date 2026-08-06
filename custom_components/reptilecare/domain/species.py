@@ -6,7 +6,6 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from enum import StrEnum
-from importlib.resources import files
 from importlib.resources.abc import Traversable
 import json
 import math
@@ -436,13 +435,39 @@ class SpeciesProfileRegistry:
 
     @classmethod
     def load_builtin_profiles(cls) -> Self:
-        """Load all bundled species profiles from package resources."""
-        directory = files(BUILTIN_PROFILE_PACKAGE)
-        return cls.from_files(
-            item
-            for item in directory.iterdir()
-            if item.is_file() and item.name.endswith(".json")
-        )
+        """Load bundled species profiles from the built-in content catalog."""
+        from ..content.loader import load_builtin_content
+
+        load_result = load_builtin_content()
+        profiles = []
+        for package in load_result.bundle.species.all():
+            recommendations = tuple(
+                EnvironmentalRecommendation(
+                    target_id=target.target_id,
+                    display_name=target.display_name,
+                    minimum=target.minimum,
+                    maximum=target.maximum,
+                    unit=target.unit,
+                    warning_minimum=target.warning_minimum,
+                    warning_maximum=target.warning_maximum,
+                    notes=target.notes,
+                )
+                for target in package.environmental_targets
+            )
+            profiles.append(
+                SpeciesProfile(
+                    profile_id=package.species_id,
+                    display_name=package.display_name,
+                    scientific_name=package.scientific_name,
+                    category=package.category,
+                    description=package.description,
+                    default_environmental_targets=EnvironmentalRecommendationSet(
+                        recommendations
+                    ),
+                    default_task_template_ids=package.default_task_template_ids,
+                )
+            )
+        return cls(profiles)
 
     def get(self, profile_id: str) -> SpeciesProfile:
         """Return one registered profile."""

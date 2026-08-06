@@ -14,6 +14,7 @@ async def async_get_config_entry_diagnostics(
     _hass: HomeAssistant, entry: ReptileCareConfigEntry
 ) -> dict[str, Any]:
     """Return safe diagnostics for a ReptileCare config entry."""
+    content = getattr(entry.runtime_data, "content", None)
     reptile_ids = entry.runtime_data.entity_projection.all_reptile_ids()
     pending_counts: dict[str, int] = {}
     overdue_counts: dict[str, int] = {}
@@ -33,6 +34,12 @@ async def async_get_config_entry_diagnostics(
         "runtime": {
             "event_count": len(entry.runtime_data.coordinator.data.events),
             "reptile_count": len(entry.runtime_data.reptile_repository.all()),
+            "species_available_count": 0
+            if content is None
+            else len(content.species.all()),
+            "built_in_care_plan_count": 0
+            if content is None
+            else len(content.care_plans.all()),
             "event_storage": type(entry.runtime_data.event_store).__name__,
             "entity_projection": {
                 "entity_count_by_platform": {

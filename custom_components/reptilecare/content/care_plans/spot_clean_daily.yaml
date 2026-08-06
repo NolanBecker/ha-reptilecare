@@ -1,0 +1,11 @@
+content_id: builtin:spot_clean_daily
+display_name: Spot Cleaning
+description: Remove visible waste and tidy the enclosure.
+task_template_id: builtin:spot_clean
+workflow_id: builtin:basic_care
+schedule:
+  every: 1
+  unit: days
+priority: normal
+metadata:
+  audience: onboarding

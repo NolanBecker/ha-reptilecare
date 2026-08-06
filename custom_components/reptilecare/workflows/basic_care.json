@@ -1,0 +1,54 @@
+{
+  "workflow_id": "builtin:basic_care",
+  "display_name": "Basic Care Completion",
+  "description": "A minimal workflow that ends after a task is completed or intentionally skipped.",
+  "version": 1,
+  "start_node": "start",
+  "nodes": [
+    {
+      "node_id": "start",
+      "node_type": "start",
+      "metadata": {}
+    },
+    {
+      "node_id": "complete_workflow",
+      "node_type": "end",
+      "metadata": {}
+    }
+  ],
+  "transitions": [
+    {
+      "from_node": "start",
+      "to_node": "complete_workflow",
+      "trigger": {
+        "trigger_type": "task_completed",
+        "metadata": {}
+      },
+      "metadata": {}
+    },
+    {
+      "from_node": "start",
+      "to_node": "complete_workflow",
+      "trigger": {
+        "trigger_type": "outcome_selected",
+        "outcome_id": "skipped",
+        "metadata": {}
+      },
+      "metadata": {}
+    },
+    {
+      "from_node": "start",
+      "to_node": "complete_workflow",
+      "trigger": {
+        "trigger_type": "outcome_selected",
+        "outcome_id": "cancelled",
+        "metadata": {}
+      },
+      "metadata": {}
+    }
+  ],
+  "metadata": {
+    "audience": "core"
+  },
+  "schema_version": 1
+}

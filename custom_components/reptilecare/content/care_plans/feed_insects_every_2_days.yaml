@@ -1,0 +1,11 @@
+content_id: builtin:feed_insects_every_2_days
+display_name: Feed Insects
+description: Offer a feeder-insect meal on a simple recurring schedule.
+task_template_id: builtin:feed_insects
+workflow_id: builtin:feeding_cycle
+schedule:
+  every: 2
+  unit: days
+priority: normal
+metadata:
+  audience: onboarding

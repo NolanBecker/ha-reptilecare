@@ -17,6 +17,7 @@ from homeassistant.exceptions import ConfigEntryError
 from .application import CareEngine, WorkflowEvaluator
 from .care_plan_storage import HomeAssistantCarePlanPersistence
 from .care_task_storage import HomeAssistantCareTaskPersistence
+from .content.loader import load_builtin_content
 from .coordinator import ReptileCareCoordinator
 from .domain.care_plan import CarePlanError, CarePlanRepository
 from .domain.care_task import CareTaskError, CareTaskRepository
@@ -29,6 +30,8 @@ from .frontend_support import (
     async_register_frontend_assets,
     async_unregister_frontend_assets,
 )
+from .models import ReptileCareRuntimeData
+from .onboarding import async_apply_onboarding, deserialize_request
 from .reptile_storage import HomeAssistantReptilePersistence
 from .runtime_updates import HomeAssistantRuntimeEventPublisher
 from .services import async_register_services, async_unregister_services
@@ -46,6 +49,9 @@ PLATFORMS: tuple[Platform, ...] = (
 
 async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) -> bool:
     """Set up ReptileCare from a config entry."""
+    content_result = await hass.async_add_executor_job(load_builtin_content)
+    for warning in content_result.warnings:
+        _LOGGER.warning("Built-in content warning: %s", warning)
     try:
         species_profiles = await hass.async_add_executor_job(
             SpeciesProfileRegistry.load_builtin_profiles
@@ -113,7 +119,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
         workflow_evaluator,
         event_publisher=event_publisher,
     )
-    await care_engine.async_reconcile_pending_operations()
     care_task_generator = CareTaskGenerator(
         reptile_repository,
         care_plan_repository,
@@ -123,8 +128,41 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
         schedule_calculator,
         event_publisher=event_publisher,
     )
-    generation_result = await care_task_generator.async_generate(now=datetime.now(UTC))
-    if generation_result.errors:
+    entry.runtime_data = ReptileCareRuntimeData(
+        coordinator=coordinator,
+        event_store=store,
+        content=content_result.bundle,
+        species_profiles=species_profiles,
+        reptile_repository=reptile_repository,
+        task_templates=task_templates,
+        workflow_graphs=workflow_graphs,
+        care_plan_repository=care_plan_repository,
+        care_task_repository=care_task_repository,
+        schedule_calculator=schedule_calculator,
+        care_task_generator=care_task_generator,
+        workflow_evaluator=workflow_evaluator,
+        care_engine=care_engine,
+        entity_projection=None,  # type: ignore[arg-type]
+        event_publisher=event_publisher,
+    )
+
+    onboarding_data = entry.data.get("onboarding")
+    if isinstance(onboarding_data, dict) and not reptile_repository.all():
+        await async_apply_onboarding(
+            entry.runtime_data,
+            deserialize_request(onboarding_data),
+            now=datetime.now(UTC),
+        )
+        hass.config_entries.async_update_entry(entry, data={})
+
+    await care_engine.async_reconcile_pending_operations()
+
+    generation_result = None
+    if entry.options.get("generate_tasks_on_startup", True):
+        generation_result = await care_task_generator.async_generate(
+            now=datetime.now(UTC)
+        )
+    if generation_result is not None and generation_result.errors:
         for care_plan_id, message in generation_result.errors.items():
             _LOGGER.warning(
                 "CareTask generation skipped plan %s during setup: %s",
@@ -147,22 +185,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
         lambda: coordinator.timeline,
     )
 
-    entry.runtime_data = ReptileCareRuntimeData(
-        coordinator=coordinator,
-        event_store=store,
-        species_profiles=species_profiles,
-        reptile_repository=reptile_repository,
-        task_templates=task_templates,
-        workflow_graphs=workflow_graphs,
-        care_plan_repository=care_plan_repository,
-        care_task_repository=care_task_repository,
-        schedule_calculator=schedule_calculator,
-        care_task_generator=care_task_generator,
-        workflow_evaluator=workflow_evaluator,
-        care_engine=care_engine,
-        entity_projection=entity_projection,
-        event_publisher=event_publisher,
-    )
+    entry.runtime_data.entity_projection = entity_projection
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
     async_register_services(hass)
     await async_register_frontend_assets(hass)
@@ -198,7 +221,5 @@ async def _async_reload_entry(
     """Reload ReptileCare when its config entry is updated."""
     await hass.config_entries.async_reload(entry.entry_id)
 
-
-from .models import ReptileCareRuntimeData  # noqa: E402
 
 type ReptileCareConfigEntry = ConfigEntry[ReptileCareRuntimeData]

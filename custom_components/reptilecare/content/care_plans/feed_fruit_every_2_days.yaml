@@ -1,0 +1,11 @@
+content_id: builtin:feed_fruit_every_2_days
+display_name: Feed Fruit Mix
+description: Offer prepared fruit mix on a simple recurring schedule.
+task_template_id: builtin:feed_fruit
+workflow_id: builtin:feeding_cycle
+schedule:
+  every: 2
+  unit: days
+priority: normal
+metadata:
+  audience: onboarding

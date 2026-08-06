@@ -1,0 +1,39 @@
+species_id: builtin:crested_gecko
+display_name: Crested Gecko
+scientific_name: Correlophus ciliatus
+category: gecko
+description: A popular arboreal gecko that thrives on consistent feeding and humidity.
+aliases:
+  - eyelash gecko
+icon: mdi:lizard
+husbandry_metadata:
+  authoritative_today: environmental_targets
+  notes: Placeholder husbandry metadata can be expanded in future releases.
+environmental_targets:
+  - target_id: daytime_temperature
+    display_name: Daytime Temperature
+    minimum: 72
+    maximum: 78
+    unit: F
+  - target_id: nighttime_temperature
+    display_name: Night Temperature
+    minimum: 68
+    maximum: 74
+    unit: F
+  - target_id: humidity
+    display_name: Humidity
+    minimum: 60
+    maximum: 80
+    unit: "%"
+recommended_care_plan_ids:
+  - builtin:feed_fruit_every_2_days
+  - builtin:spot_clean_daily
+  - builtin:change_water_daily
+  - builtin:deep_clean_monthly
+default_task_template_ids:
+  - builtin:feed_fruit
+  - builtin:spot_clean
+  - builtin:change_water
+  - builtin:deep_clean
+schema_version: 1
+package_version: 1

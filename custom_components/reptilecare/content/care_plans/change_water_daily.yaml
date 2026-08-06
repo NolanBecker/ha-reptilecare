@@ -1,0 +1,11 @@
+content_id: builtin:change_water_daily
+display_name: Change Water
+description: Refresh the water dish and confirm clean water is available.
+task_template_id: builtin:change_water
+workflow_id: builtin:basic_care
+schedule:
+  every: 1
+  unit: days
+priority: normal
+metadata:
+  audience: onboarding
