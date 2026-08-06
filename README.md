@@ -149,6 +149,11 @@ If Release Please reports `No user facing commits found`, the most common cause
 is that no merged `feat:` or `fix:` title exists on `main` since the current
 release baseline.
 
+If Release Please reports that GitHub Actions is not permitted to create pull
+requests, configure the `RELEASE_PLEASE_TOKEN` repository secret or explicitly
+enable the repository setting that allows `GITHUB_TOKEN` to create and approve
+pull requests.
+
 ## Architecture
 
 ReptileCare stores facts as immutable `CareEvent` records rather than
