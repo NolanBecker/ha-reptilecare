@@ -279,8 +279,22 @@ services rather than bypassing the public application API.
 Backend writes now flow through a lightweight application-event layer so
 services, entities, and the bundled frontend refresh without polling.
 
-See [Frontend](docs/FRONTEND.md) for card configuration, lifecycle, empty and
-overdue states, quick-action behavior, and completion-dialog behavior.
+The current card experience now emphasizes:
+
+- urgency-grouped tasks
+- quick outcome buttons when the template allows them
+- per-task progress feedback instead of full-card blocking
+- accessible focus states and reduced-motion behavior
+- phone-friendly layouts without horizontal scrolling
+
+Screenshot placeholder:
+
+- polished Today's Care card screenshots will be added in a future pass after
+  capture from a live Home Assistant dashboard.
+
+See [Frontend](docs/FRONTEND.md) for card configuration, interaction
+philosophy, accessibility notes, mobile recommendations, empty and overdue
+states, quick-action behavior, and completion-dialog behavior.
 
 Pixel, a Gargoyle Gecko, is the first development reptile and will guide early
 use cases. ReptileCare is intentionally designed to support many individual

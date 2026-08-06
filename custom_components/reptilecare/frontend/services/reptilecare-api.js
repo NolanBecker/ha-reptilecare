@@ -23,7 +23,7 @@ export async function fetchTodaysCareTasks(hass, config) {
     include_details: true,
     include_terminal: false,
   });
-  return sortTasks((response.tasks ?? []).map(normalizeTask));
+  return sortTasks((response.tasks ?? []).map((task) => normalizeTask(task)));
 }
 
 export async function resolveTask(hass, taskId, payload) {

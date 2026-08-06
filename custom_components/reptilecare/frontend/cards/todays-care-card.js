@@ -2,7 +2,13 @@ import "../components/task-list-item.js";
 import "../dialogs/task-completion-dialog.js";
 
 import {
+  applyTaskUiState,
+  buildHeaderContext,
+  groupTasks,
+  mergeResolutionResult,
+  normalizeTask,
   resolveReptileLabel,
+  settleInsertedTasks,
   summarizeTaskList,
   validateTodaysCareConfig,
 } from "../models/todays-care-model.js";
@@ -11,6 +17,8 @@ import { sharedCardStyles } from "../styles/reptilecare-styles.js";
 import { escapeHtml } from "../utils/html.js";
 
 const RELEVANT_DOMAINS = new Set(["sensor", "binary_sensor", "button"]);
+const EXIT_TRANSITION_MS = 180;
+const ENTER_TRANSITION_MS = 220;
 
 function cardMetadata() {
   return {
@@ -47,10 +55,12 @@ export class ReptileCareTodaysCareCard extends HTMLElement {
     this._loading = false;
     this._error = "";
     this._tasks = [];
-    this._busyTaskId = null;
     this._refreshHandle = null;
     this._entitySignature = "";
     this._dialog = defaultDialogState();
+    this._announcer = "";
+    this._loadPromise = null;
+    this._queuedSilentRefresh = false;
   }
 
   setConfig(config) {
@@ -76,14 +86,14 @@ export class ReptileCareTodaysCareCard extends HTMLElement {
   }
 
   getCardSize() {
-    return Math.max(2, this._tasks.length * 2);
+    return Math.max(3, this._tasks.length * 2);
   }
 
   getGridOptions() {
     return {
       columns: 6,
-      min_rows: 2,
-      rows: Math.max(2, this._tasks.length * 2),
+      min_rows: 3,
+      rows: Math.max(3, this._tasks.length * 2),
     };
   }
 
@@ -115,6 +125,19 @@ export class ReptileCareTodaysCareCard extends HTMLElement {
       .join("|");
   }
 
+  _prefersReducedMotion() {
+    return Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
+  }
+
+  async _afterMotion(delayMs) {
+    if (this._prefersReducedMotion()) {
+      return;
+    }
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, delayMs);
+    });
+  }
+
   _scheduleRefreshFromStateChange() {
     if (!this.isConnected || !this._hass || !this._config) {
       return;
@@ -135,9 +158,27 @@ export class ReptileCareTodaysCareCard extends HTMLElement {
     }, 120);
   }
 
+  _replaceTasks(tasks) {
+    this._tasks = tasks.map((task) => normalizeTask(task));
+  }
+
+  _setTasks(tasks) {
+    this._tasks = tasks.map((task) => normalizeTask(task));
+    this._render();
+  }
+
+  _setAnnouncer(message) {
+    this._announcer = message;
+  }
+
   async _loadTasks({ silent = false } = {}) {
     if (!this._hass || !this._config) {
       return;
+    }
+
+    if (this._loadPromise) {
+      this._queuedSilentRefresh = this._queuedSilentRefresh || silent;
+      return this._loadPromise;
     }
 
     if (!silent) {
@@ -146,15 +187,27 @@ export class ReptileCareTodaysCareCard extends HTMLElement {
       this._render();
     }
 
+    this._loadPromise = (async () => {
+      try {
+        this._replaceTasks(await fetchTodaysCareTasks(this._hass, this._config));
+        this._error = "";
+        this._entitySignature = this._computeEntitySignature();
+      } catch (error) {
+        this._error = error instanceof Error ? error.message : "Unable to load care tasks";
+      } finally {
+        this._loading = false;
+        this._render();
+      }
+    })();
+
     try {
-      this._tasks = await fetchTodaysCareTasks(this._hass, this._config);
-      this._error = "";
-      this._entitySignature = this._computeEntitySignature();
-    } catch (error) {
-      this._error = error instanceof Error ? error.message : "Unable to load care tasks";
+      await this._loadPromise;
     } finally {
-      this._loading = false;
-      this._render();
+      this._loadPromise = null;
+      if (this._queuedSilentRefresh) {
+        this._queuedSilentRefresh = false;
+        void this._loadTasks({ silent: true });
+      }
     }
   }
 
@@ -220,20 +273,54 @@ export class ReptileCareTodaysCareCard extends HTMLElement {
     return metadata;
   }
 
+  async _applyResolutionSuccess(task, response) {
+    this._tasks = applyTaskUiState(this._tasks, task.task_id, {
+      busy: false,
+      error: "",
+      phase: "exiting",
+    });
+    this._render();
+
+    await this._afterMotion(EXIT_TRANSITION_MS);
+
+    this._tasks = mergeResolutionResult(this._tasks, task.task_id, response);
+    this._setAnnouncer(`${task.presentation.title} updated.`);
+    this._render();
+
+    if (!this._prefersReducedMotion()) {
+      window.setTimeout(() => {
+        this._tasks = settleInsertedTasks(this._tasks);
+        this._render();
+      }, ENTER_TRANSITION_MS);
+    }
+
+    void this._loadTasks({ silent: true });
+  }
+
   async _resolveTask(task, payload) {
-    this._busyTaskId = task.task_id;
+    this._tasks = applyTaskUiState(this._tasks, task.task_id, {
+      busy: true,
+      error: "",
+      phase: "busy",
+    });
     this._error = "";
     this._render();
 
     try {
-      await resolveTask(this._hass, task.task_id, payload);
-      await this._loadTasks({ silent: true });
+      const response = await resolveTask(this._hass, task.task_id, payload);
+      await this._applyResolutionSuccess(task, response);
+      return response;
     } catch (error) {
-      this._error = error instanceof Error ? error.message : "Unable to resolve task";
-      throw error;
-    } finally {
-      this._busyTaskId = null;
+      const message = error instanceof Error ? error.message : "Unable to resolve task";
+      this._tasks = applyTaskUiState(this._tasks, task.task_id, {
+        busy: false,
+        error: message,
+        phase: "idle",
+      });
+      this._error = message;
+      this._setAnnouncer(message);
       this._render();
+      throw error;
     }
   }
 
@@ -300,16 +387,18 @@ export class ReptileCareTodaysCareCard extends HTMLElement {
         this._openDialog(event.detail.task);
       });
       item.addEventListener("reptilecare:skip", (event) => {
-        this._handleSkip(event.detail.task);
+        void this._handleSkip(event.detail.task);
       });
       item.addEventListener("reptilecare:quick-complete", (event) => {
-        this._handleQuickComplete(event.detail.task, event.detail.outcomeId);
+        void this._handleQuickComplete(event.detail.task, event.detail.outcomeId);
       });
     });
 
     const dialog = this.shadowRoot.querySelector("reptilecare-task-completion-dialog");
     dialog?.addEventListener("reptilecare:dialog-close", () => this._closeDialog());
-    dialog?.addEventListener("reptilecare:dialog-submit", () => this._submitDialog());
+    dialog?.addEventListener("reptilecare:dialog-submit", () => {
+      void this._submitDialog();
+    });
     dialog?.addEventListener("reptilecare:dialog-change", (event) =>
       this._updateDialog(event.detail),
     );
@@ -318,13 +407,23 @@ export class ReptileCareTodaysCareCard extends HTMLElement {
     );
   }
 
-  _renderTaskList() {
+  _renderTaskSections() {
     if (this._loading) {
-      return `<div class="message loading" role="status" aria-live="polite">Loading today's care…</div>`;
+      return `
+        <div class="message loading" role="status" aria-live="polite">
+          <strong>Loading today’s care…</strong>
+          <p>Checking what ${escapeHtml(resolveReptileLabel(this._config, this._matchingEntityStates()))} needs right now.</p>
+        </div>
+      `;
     }
 
-    if (this._error) {
-      return `<div class="message error" role="alert">${escapeHtml(this._error)}</div>`;
+    if (this._error && this._tasks.length === 0) {
+      return `
+        <div class="message error" role="alert">
+          <strong>We couldn’t load today’s care.</strong>
+          <p>${escapeHtml(this._error)}</p>
+        </div>
+      `;
     }
 
     if (!this._tasks.length) {
@@ -341,40 +440,65 @@ export class ReptileCareTodaysCareCard extends HTMLElement {
       `;
     }
 
-    return `
-      <div class="task-list">
-        ${this._tasks.map(() => `<reptilecare-task-list-item></reptilecare-task-list-item>`).join("")}
-      </div>
-    `;
+    return groupTasks(this._tasks)
+      .map(
+        (section) => `
+          <section class="task-group" aria-labelledby="group-${escapeHtml(section.key)}">
+            <div class="group-header">
+              <h3 id="group-${escapeHtml(section.key)}" class="group-title">${escapeHtml(section.label)}</h3>
+              <span class="group-count">${section.tasks.length}</span>
+            </div>
+            <div class="task-list">
+              ${section.tasks
+                .map(() => "<reptilecare-task-list-item></reptilecare-task-list-item>")
+                .join("")}
+            </div>
+          </section>
+        `,
+      )
+      .join("");
   }
 
   _renderSummaryPanel() {
     const summary = summarizeTaskList(this._tasks, this._config, this._matchingEntityStates());
-    const reptileLabel = resolveReptileLabel(this._config, this._matchingEntityStates());
-
-    if (this._loading) {
-      return `
-        <section class="summary-panel loading" aria-live="polite">
-          <p class="summary-eyebrow">Loading care state</p>
-          <p class="summary-body">Fetching actionable tasks for ${escapeHtml(reptileLabel)}.</p>
-        </section>
-      `;
-    }
-
-    if (this._error) {
-      return `
-        <section class="summary-panel error" role="alert">
-          <p class="summary-eyebrow">Unable to load today's care</p>
-          <p class="summary-body">${escapeHtml(this._error)}</p>
-        </section>
-      `;
-    }
-
     return `
       <section class="summary-panel ${escapeHtml(summary.tone)}" aria-live="polite">
         <p class="summary-eyebrow">${escapeHtml(summary.heading)}</p>
         <p class="summary-body">${escapeHtml(summary.body)}</p>
       </section>
+    `;
+  }
+
+  _renderHeader() {
+    const header = buildHeaderContext(this._tasks, this._config, this._matchingEntityStates());
+    return `
+      <div class="header">
+        <div class="title-wrap">
+          <div class="title-row">
+            <h2 class="title">🦎 ${escapeHtml(header.reptileLabel)}</h2>
+            <span class="status-chip ${escapeHtml(header.statusTone)}">${escapeHtml(header.statusLabel)}</span>
+          </div>
+          ${
+            header.species
+              ? `<p class="subtitle">${escapeHtml(header.species)}</p>`
+              : ""
+          }
+        </div>
+        <div class="header-meta">
+          <div class="count-chip">
+            <span class="count-value">${header.pendingCount}</span>
+            <span class="count-label">${header.pendingCount === 1 ? "task" : "tasks"}</span>
+          </div>
+          ${
+            header.overdueCount > 0
+              ? `<span class="alert-chip">${header.overdueCount} overdue</span>`
+              : ""
+          }
+          <button class="icon-button" type="button" data-refresh aria-label="Refresh today's care" ${this._loading ? "disabled" : ""}>
+            <ha-icon icon="mdi:refresh"></ha-icon>
+          </button>
+        </div>
+      </div>
     `;
   }
 
@@ -397,6 +521,103 @@ export class ReptileCareTodaysCareCard extends HTMLElement {
           padding: 1rem;
         }
 
+        .header {
+          display: grid;
+          gap: 0.9rem;
+        }
+
+        .title-wrap {
+          display: grid;
+          gap: 0.25rem;
+        }
+
+        .title-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.55rem;
+          align-items: center;
+        }
+
+        .title {
+          margin: 0;
+          font-size: 1.2rem;
+          line-height: 1.25;
+        }
+
+        .subtitle {
+          margin: 0;
+          color: var(--secondary-text-color);
+          font-size: 0.94rem;
+        }
+
+        .header-meta {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 0.65rem;
+        }
+
+        .count-chip,
+        .status-chip,
+        .alert-chip {
+          display: inline-flex;
+          align-items: center;
+          min-height: 2rem;
+          border-radius: 999px;
+          padding: 0.2rem 0.75rem;
+          font-size: 0.82rem;
+          font-weight: 700;
+        }
+
+        .count-chip {
+          gap: 0.45rem;
+          background: color-mix(in srgb, var(--secondary-background-color) 72%, transparent);
+        }
+
+        .count-value {
+          font-size: 0.98rem;
+          color: var(--primary-text-color);
+        }
+
+        .count-label {
+          color: var(--secondary-text-color);
+        }
+
+        .status-chip {
+          background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+          color: var(--primary-color);
+        }
+
+        .status-chip.overdue {
+          background: color-mix(in srgb, var(--error-color) 14%, transparent);
+          color: var(--error-color);
+        }
+
+        .status-chip.due {
+          background: color-mix(in srgb, var(--warning-color, #f0b400) 18%, transparent);
+          color: color-mix(in srgb, var(--warning-color, #f0b400) 88%, black);
+        }
+
+        .status-chip.clear {
+          background: color-mix(in srgb, var(--success-color, #2e7d32) 16%, transparent);
+          color: var(--success-color, #2e7d32);
+        }
+
+        .alert-chip {
+          background: color-mix(in srgb, var(--error-color) 14%, transparent);
+          color: var(--error-color);
+        }
+
+        .icon-button {
+          border: none;
+          width: 2.5rem;
+          height: 2.5rem;
+          border-radius: 999px;
+          cursor: pointer;
+          background: color-mix(in srgb, var(--secondary-background-color) 78%, transparent);
+          color: var(--secondary-text-color);
+        }
+
         .summary-panel {
           display: grid;
           gap: 0.35rem;
@@ -410,20 +631,11 @@ export class ReptileCareTodaysCareCard extends HTMLElement {
             );
         }
 
-        .summary-panel.warning {
+        .summary-panel.overdue {
           background:
             linear-gradient(
               140deg,
-              color-mix(in srgb, var(--warning-color, #f0b400) 20%, transparent),
-              color-mix(in srgb, var(--error-color) 10%, transparent)
-            );
-        }
-
-        .summary-panel.error {
-          background:
-            linear-gradient(
-              140deg,
-              color-mix(in srgb, var(--error-color) 16%, transparent),
+              color-mix(in srgb, var(--error-color) 18%, transparent),
               color-mix(in srgb, var(--secondary-background-color) 70%, transparent)
             );
         }
@@ -453,45 +665,20 @@ export class ReptileCareTodaysCareCard extends HTMLElement {
           line-height: 1.45;
         }
 
-        .header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 0.75rem;
-        }
-
-        .title-wrap {
-          display: grid;
-          gap: 0.2rem;
-        }
-
-        .title {
-          margin: 0;
-          font-size: 1.12rem;
-          line-height: 1.3;
-        }
-
-        .subtitle {
-          margin: 0;
-          color: var(--secondary-text-color);
-          font-size: 0.92rem;
-        }
-
-        .icon-button {
-          border: none;
-          width: 2.4rem;
-          height: 2.4rem;
-          border-radius: 999px;
-          cursor: pointer;
-          background: color-mix(in srgb, var(--secondary-background-color) 78%, transparent);
-          color: var(--secondary-text-color);
-        }
-
         .message {
           border-radius: 18px;
-          padding: 1rem;
+          padding: 1.1rem;
           background: color-mix(in srgb, var(--secondary-background-color) 82%, transparent);
           color: var(--secondary-text-color);
+        }
+
+        .message strong,
+        .message p {
+          margin: 0;
+        }
+
+        .message p {
+          margin-top: 0.45rem;
         }
 
         .message.error {
@@ -501,40 +688,77 @@ export class ReptileCareTodaysCareCard extends HTMLElement {
 
         .message.empty {
           text-align: center;
-          padding-block: 1.25rem;
+          padding-block: 1.3rem;
         }
 
-        .message.empty p {
-          margin: 0.45rem 0 0;
+        .task-group {
+          display: grid;
+          gap: 0.8rem;
+        }
+
+        .group-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.75rem;
+        }
+
+        .group-title {
+          margin: 0;
+          font-size: 0.98rem;
+          line-height: 1.3;
+        }
+
+        .group-count {
+          min-width: 1.8rem;
+          min-height: 1.8rem;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 999px;
+          padding: 0 0.45rem;
+          background: color-mix(in srgb, var(--secondary-background-color) 72%, transparent);
+          color: var(--secondary-text-color);
+          font-weight: 700;
+          font-size: 0.82rem;
         }
 
         .task-list {
           display: grid;
           gap: 0.85rem;
         }
+
+        @media (max-width: 720px) {
+          .shell {
+            padding: 0.9rem;
+          }
+
+          .header-meta {
+            justify-content: space-between;
+          }
+
+          .icon-button {
+            margin-left: auto;
+          }
+        }
       </style>
-      <ha-card>
+      <ha-card aria-busy="${this._loading ? "true" : "false"}">
         <div class="shell">
-          <div class="header">
-            <div class="title-wrap">
-              <h2 class="title">${escapeHtml(this._config.title)}</h2>
-              <p class="subtitle">Actionable care tasks for ${escapeHtml(resolveReptileLabel(this._config, this._matchingEntityStates()))}</p>
-            </div>
-            <button class="icon-button" type="button" data-refresh aria-label="Refresh today's care" ${this._loading || this._busyTaskId ? "disabled" : ""}>
-              <ha-icon icon="mdi:refresh"></ha-icon>
-            </button>
-          </div>
+          <p class="sr-only" aria-live="polite">${escapeHtml(this._announcer)}</p>
+          ${this._renderHeader()}
           ${this._renderSummaryPanel()}
-          ${this._renderTaskList()}
+          ${this._renderTaskSections()}
           <reptilecare-task-completion-dialog></reptilecare-task-completion-dialog>
         </div>
       </ha-card>
     `;
 
-    const items = this.shadowRoot.querySelectorAll("reptilecare-task-list-item");
-    items.forEach((item, index) => {
-      item.task = this._tasks[index];
-      item.busy = this._busyTaskId === this._tasks[index].task_id;
+    const renderedTaskItems = Array.from(
+      this.shadowRoot.querySelectorAll("reptilecare-task-list-item"),
+    );
+    const orderedTasks = groupTasks(this._tasks).flatMap((section) => section.tasks);
+    renderedTaskItems.forEach((item, index) => {
+      item.task = orderedTasks[index];
       item.locale = this._hass?.locale?.language ?? "en";
     });
 

@@ -12,13 +12,26 @@ const DUE_STATE_PRIORITY = {
   overdue: 0,
   due: 1,
   upcoming: 2,
-  snoozed: 3,
+  future: 3,
+  snoozed: 4,
 };
 const TASK_PRIORITY_WEIGHT = {
   urgent: 0,
   high: 1,
   normal: 2,
   low: 3,
+};
+const STATUS_LABELS = {
+  clear: "All Caught Up",
+  due: "Due Today",
+  overdue: "Overdue",
+  upcoming: "Upcoming",
+};
+const GROUP_LABELS = {
+  overdue: "Overdue",
+  due: "Due Now",
+  upcoming_today: "Upcoming Today",
+  future: "Future",
 };
 
 function assertText(value, field) {
@@ -28,19 +41,93 @@ function assertText(value, field) {
   return value.trim();
 }
 
+function titleCaseSlug(slug) {
+  return slug
+    .split(/[-_]+/u)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function parseDate(value) {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function isSameLocalDay(left, right) {
+  return (
+    left.getFullYear() === right.getFullYear()
+    && left.getMonth() === right.getMonth()
+    && left.getDate() === right.getDate()
+  );
+}
+
+function deriveDueState(task, now = new Date()) {
+  if (task.due_state === "overdue" || task.due_state === "due" || task.due_state === "snoozed") {
+    return task.due_state;
+  }
+
+  const dueAt = parseDate(task.due_at);
+  if (!dueAt) {
+    return "future";
+  }
+  if (dueAt.getTime() < now.getTime()) {
+    return isSameLocalDay(dueAt, now) ? "due" : "overdue";
+  }
+  if (isSameLocalDay(dueAt, now)) {
+    return "upcoming";
+  }
+  return "future";
+}
+
+function deriveUrgencyGroup(task, now = new Date()) {
+  const dueState = deriveDueState(task, now);
+  if (dueState === "overdue") {
+    return "overdue";
+  }
+  if (dueState === "due") {
+    return "due";
+  }
+  if (dueState === "upcoming") {
+    return "upcoming_today";
+  }
+  return "future";
+}
+
+function taskSortKey(task, now = new Date()) {
+  const dueAt = parseDate(task.due_at);
+  const dueValue = dueAt ? dueAt.getTime() : Number.MAX_SAFE_INTEGER;
+  const dueState = deriveDueState(task, now);
+  return [
+    DUE_STATE_PRIORITY[dueState] ?? 99,
+    dueValue,
+    TASK_PRIORITY_WEIGHT[task.presentation.priority] ?? 99,
+    task.presentation.title,
+    task.task_id,
+  ];
+}
+
+function entityString(stateObj, ...keys) {
+  for (const key of keys) {
+    const value = stateObj?.attributes?.[key];
+    if (typeof value === "string" && value.trim() !== "") {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
 export function validateTodaysCareConfig(config) {
   if (!config || typeof config !== "object") {
     throw new Error("Card configuration is required");
   }
 
-  const reptileId =
-    "reptile_id" in config && config.reptile_id != null
-      ? assertText(config.reptile_id, "reptile_id")
-      : null;
-  const slug =
-    "slug" in config && config.slug != null
-      ? assertText(config.slug, "slug")
-      : null;
+  const reptileId = "reptile_id" in config && config.reptile_id != null
+    ? assertText(config.reptile_id, "reptile_id")
+    : null;
+  const slug = "slug" in config && config.slug != null
+    ? assertText(config.slug, "slug")
+    : null;
 
   if ((reptileId === null) === (slug === null)) {
     throw new Error("Provide exactly one of reptile_id or slug");
@@ -65,29 +152,18 @@ export function isQuickActionTask(task) {
   return outcomes.length > 0 && outcomes.length <= 3 && requiredFields.length === 0;
 }
 
-function titleCaseSlug(slug) {
-  return slug
-    .split(/[-_]+/u)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
 export function resolveReptileLabel(config, entityStates = []) {
   for (const stateObj of entityStates) {
-    const friendlyName = stateObj?.attributes?.friendly_name;
-    if (typeof friendlyName !== "string" || friendlyName.trim() === "") {
+    const friendlyName = entityString(stateObj, "friendly_name");
+    if (!friendlyName) {
       continue;
     }
 
-    const trimmed = friendlyName.trim();
-    const suffix = KNOWN_ENTITY_NAME_SUFFIXES.find((candidate) =>
-      trimmed.endsWith(candidate),
-    );
+    const suffix = KNOWN_ENTITY_NAME_SUFFIXES.find((candidate) => friendlyName.endsWith(candidate));
     if (suffix) {
-      return trimmed.slice(0, -suffix.length) || trimmed;
+      return friendlyName.slice(0, -suffix.length) || friendlyName;
     }
-    return trimmed;
+    return friendlyName;
   }
 
   if (config.slug) {
@@ -96,41 +172,58 @@ export function resolveReptileLabel(config, entityStates = []) {
   return "This reptile";
 }
 
-export function normalizeTask(task) {
+export function resolveSpeciesLabel(entityStates = []) {
+  for (const stateObj of entityStates) {
+    const species = entityString(
+      stateObj,
+      "species",
+      "species_name",
+      "species_display_name",
+      "model",
+    );
+    if (species) {
+      return species;
+    }
+  }
+  return null;
+}
+
+export function normalizeTask(task, now = new Date()) {
   const completionSchema = task.completion_schema ?? {
     outcomes: [],
     context_fields: [],
   };
+  const dueState = deriveDueState(task, now);
+  const urgencyGroup = deriveUrgencyGroup({ ...task, due_state: dueState }, now);
   return {
     ...task,
-    presentation: task.presentation ?? {
-      title: task.task_template_id,
-      description: null,
-      icon: "mdi:clipboard-text-clock-outline",
-      priority: "normal",
-      care_plan_display_name: task.care_plan_id,
+    presentation: {
+      title: task.presentation?.title ?? task.task_template_id,
+      description: task.presentation?.description ?? null,
+      icon: task.presentation?.icon ?? "mdi:clipboard-text-clock-outline",
+      priority: task.presentation?.priority ?? "normal",
+      care_plan_display_name:
+        task.presentation?.care_plan_display_name ?? task.care_plan_id,
     },
     completion_schema: completionSchema,
-    due_state: task.due_state ?? "upcoming",
-    quick_actions_enabled: isQuickActionTask({ completion_schema: completionSchema }),
+    due_state: dueState,
+    urgency_group: urgencyGroup,
+    quick_actions_enabled:
+      typeof task.quick_actions_enabled === "boolean"
+        ? task.quick_actions_enabled
+        : isQuickActionTask({ completion_schema: completionSchema }),
+    ui: {
+      busy: Boolean(task.ui?.busy),
+      error: task.ui?.error ?? "",
+      phase: task.ui?.phase ?? "idle",
+    },
   };
 }
 
-function taskSortKey(task) {
-  const dueAt = typeof task.due_at === "string" ? Date.parse(task.due_at) : Number.NaN;
-  return [
-    DUE_STATE_PRIORITY[task.due_state] ?? 99,
-    Number.isNaN(dueAt) ? Number.MAX_SAFE_INTEGER : dueAt,
-    TASK_PRIORITY_WEIGHT[task.presentation.priority] ?? 99,
-    task.presentation.title,
-    task.task_id,
-  ];
-}
-
-export function sortTasks(tasks) {
+export function sortTasks(tasks, now = new Date()) {
   return [...tasks].sort((left, right) => {
-    const leftKey = taskSortKey(left);
-    const rightKey = taskSortKey(right);
+    const leftKey = taskSortKey(left, now);
+    const rightKey = taskSortKey(right, now);
     for (let index = 0; index < leftKey.length; index += 1) {
       if (leftKey[index] < rightKey[index]) {
         return -1;
@@ -143,52 +236,151 @@ export function sortTasks(tasks) {
   });
 }
 
-export function summarizeTaskList(tasks, config, entityStates = []) {
+export function groupTasks(tasks, now = new Date()) {
+  const buckets = {
+    overdue: [],
+    due: [],
+    upcoming_today: [],
+    future: [],
+  };
+  for (const task of tasks) {
+    buckets[deriveUrgencyGroup(task, now)].push(task);
+  }
+  return Object.entries(buckets)
+    .filter(([, items]) => items.length > 0)
+    .map(([key, items]) => ({
+      key,
+      label: GROUP_LABELS[key],
+      tasks: sortTasks(items, now),
+    }));
+}
+
+export function buildHeaderContext(tasks, config, entityStates = [], now = new Date()) {
   const reptileLabel = resolveReptileLabel(config, entityStates);
-  const overdueCount = tasks.filter((task) => task.due_state === "overdue").length;
-  const dueCount = tasks.filter((task) => task.due_state === "due").length;
+  const species = resolveSpeciesLabel(entityStates);
+  const overdueCount = tasks.filter((task) => deriveDueState(task, now) === "overdue").length;
+  const dueCount = tasks.filter((task) => deriveDueState(task, now) === "due").length;
+  const pendingCount = tasks.length;
+
+  let statusTone = "clear";
+  if (overdueCount > 0) {
+    statusTone = "overdue";
+  } else if (dueCount > 0) {
+    statusTone = "due";
+  } else if (pendingCount > 0) {
+    statusTone = "upcoming";
+  }
+
+  return {
+    reptileLabel,
+    species,
+    pendingCount,
+    overdueCount,
+    dueCount,
+    statusTone,
+    statusLabel: STATUS_LABELS[statusTone],
+  };
+}
+
+export function summarizeTaskList(tasks, config, entityStates = [], now = new Date()) {
+  const header = buildHeaderContext(tasks, config, entityStates, now);
+  const upcomingTodayCount = tasks.filter(
+    (task) => deriveUrgencyGroup(task, now) === "upcoming_today",
+  ).length;
 
   if (tasks.length === 0) {
     return {
       tone: "clear",
-      heading: `✨ ${reptileLabel} is all caught up!`,
+      heading: `✨ ${header.reptileLabel} is all caught up!`,
       body: "No care is currently due.",
+      statusLabel: STATUS_LABELS.clear,
     };
   }
 
-  if (overdueCount > 0) {
+  if (header.overdueCount > 0) {
     return {
-      tone: "warning",
-      heading: `⚠️ ${reptileLabel} needs attention`,
+      tone: "overdue",
+      heading: `⚠️ ${header.reptileLabel} needs attention`,
       body:
-        overdueCount === 1
+        header.overdueCount === 1
           ? "1 care task is overdue."
-          : `${overdueCount} care tasks are overdue.`,
+          : `${header.overdueCount} care tasks are overdue.`,
+      statusLabel: STATUS_LABELS.overdue,
     };
   }
 
-  if (dueCount > 0) {
+  if (header.dueCount > 0) {
     return {
-      tone: "active",
-      heading: `${reptileLabel} has care ready`,
+      tone: "due",
+      heading: `${header.reptileLabel} has care ready`,
       body:
-        dueCount === 1
+        header.dueCount === 1
           ? "1 task is ready to complete."
-          : `${dueCount} tasks are ready to complete.`,
+          : `${header.dueCount} tasks are ready to complete.`,
+      statusLabel: STATUS_LABELS.due,
+    };
+  }
+
+  if (upcomingTodayCount > 0) {
+    return {
+      tone: "upcoming",
+      heading: `🎉 Great work!`,
+      body: "Everything scheduled for today has been completed.",
+      statusLabel: STATUS_LABELS.upcoming,
     };
   }
 
   return {
     tone: "upcoming",
-    heading: `${reptileLabel} has upcoming care`,
+    heading: `${header.reptileLabel} has future care queued`,
     body:
       tasks.length === 1
         ? "1 task is scheduled next."
         : `${tasks.length} tasks are scheduled next.`,
+    statusLabel: STATUS_LABELS.upcoming,
   };
+}
+
+export function applyTaskUiState(tasks, taskId, patch, now = new Date()) {
+  return sortTasks(
+    tasks.map((task) => (
+      task.task_id === taskId
+        ? normalizeTask(
+          {
+            ...task,
+            ui: {
+              ...task.ui,
+              ...patch,
+            },
+          },
+          now,
+        )
+        : task
+    )),
+    now,
+  );
+}
+
+export function settleInsertedTasks(tasks, now = new Date()) {
+  return sortTasks(
+    tasks.map((task) => normalizeTask({ ...task, ui: { ...task.ui, phase: "idle" } }, now)),
+    now,
+  );
+}
+
+export function mergeResolutionResult(tasks, resolvedTaskId, response, now = new Date()) {
+  const remaining = tasks.filter((task) => task.task_id !== resolvedTaskId);
+  const knownTaskIds = new Set(remaining.map((task) => task.task_id));
+  const followUps = [
+    ...(response.created_follow_up_tasks ?? []),
+    ...(response.existing_follow_up_tasks ?? []),
+  ]
+    .filter((task) => task?.task_id && !knownTaskIds.has(task.task_id))
+    .map((task) => normalizeTask({ ...task, ui: { phase: "entering" } }, now));
+
+  return sortTasks([...remaining, ...followUps], now);
 }
 
 export function cardType() {
   return CARD_TYPE;
 }
-
