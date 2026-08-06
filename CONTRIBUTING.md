@@ -162,8 +162,10 @@ Safe verification method:
    `fix(release): verify automated release detection`.
 3. Merge it with squash merge.
 4. Confirm Release Please opens or updates a release PR.
-5. Review the proposed version and changelog before merging the release PR.
-6. Do not merge the release PR until the version and release notes look correct.
+5. For the first post-bootstrap verification after `v0.1.2`, a `fix(release):`
+   PR should produce a patch release proposal for `v0.1.3`.
+6. Review the proposed version and changelog before merging the release PR.
+7. Do not merge the release PR until the version and release notes look correct.
 
 ## Local quality checks
 

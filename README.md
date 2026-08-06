@@ -149,10 +149,9 @@ If Release Please reports `No user facing commits found`, the most common cause
 is that no merged `feat:` or `fix:` title exists on `main` since the current
 release baseline.
 
-If Release Please reports that GitHub Actions is not permitted to create pull
-requests, configure the `RELEASE_PLEASE_TOKEN` repository secret or explicitly
-enable the repository setting that allows `GITHUB_TOKEN` to create and approve
-pull requests.
+After the bootstrap fix merged on August 6, 2026, the first valid
+`fix(release):` PR merged with squash merge should produce a patch release PR
+proposing `v0.1.3`.
 
 ## Architecture
 
