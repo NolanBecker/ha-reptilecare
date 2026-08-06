@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/NolanBecker/ha-reptilecare/compare/v0.3.0...v0.4.0) (2026-08-06)
+
+
+### Features
+
+* **frontend:** polish Today's Care experience ([fbadfb4](https://github.com/NolanBecker/ha-reptilecare/commit/fbadfb4e957d43a3a07327690a635bfba05985b9))
+
 ## [0.3.0](https://github.com/NolanBecker/ha-reptilecare/compare/v0.2.0...v0.3.0) (2026-08-06)
 
 
