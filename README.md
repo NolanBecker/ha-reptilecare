@@ -102,12 +102,13 @@ draft pull request
     ↓
 review
     ↓
-merge to main
+squash merge to main
 ```
 
-Use Conventional Commits for merged history because releases and changelog
-entries are generated from commit messages. See [Contributing](CONTRIBUTING.md)
-for branch naming, commit examples, and local quality expectations.
+Pull request titles must use Conventional Commit format because the PR title
+becomes the parseable commit title on `main` when squash merging. See
+[Contributing](CONTRIBUTING.md) for branch naming, accepted title types, merge
+guidance, and local quality expectations.
 
 ## Release Workflow
 
@@ -137,6 +138,16 @@ Release Please reads Conventional Commits on `main`, updates
 `CHANGELOG.md`, bumps the project version and integration manifest version,
 opens a release PR, and creates the GitHub release after that PR is merged.
 The standard validation workflows remain the gate before any release is cut.
+
+Current baseline:
+
+- latest published release: `v0.1.2`
+- future Release Please parsing starts after commit
+  `9a7c45b41f95a9ab79253026ae80c61f52b3ddb9`
+
+If Release Please reports `No user facing commits found`, the most common cause
+is that no merged `feat:` or `fix:` title exists on `main` since the current
+release baseline.
 
 ## Architecture
 
