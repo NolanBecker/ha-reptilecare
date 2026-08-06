@@ -1,7 +1,11 @@
 import "../components/task-list-item.js";
 import "../dialogs/task-completion-dialog.js";
 
-import { validateTodaysCareConfig } from "../models/todays-care-model.js";
+import {
+  resolveReptileLabel,
+  summarizeTaskList,
+  validateTodaysCareConfig,
+} from "../models/todays-care-model.js";
 import { fetchTodaysCareTasks, resolveTask } from "../services/reptilecare-api.js";
 import { sharedCardStyles } from "../styles/reptilecare-styles.js";
 import { escapeHtml } from "../utils/html.js";
@@ -10,7 +14,7 @@ const RELEVANT_DOMAINS = new Set(["sensor", "binary_sensor", "button"]);
 
 function cardMetadata() {
   return {
-    type: "reptilecare-todays-care",
+    type: "reptilecare-todays-care-card",
     name: "ReptileCare Today's Care",
     preview: false,
     description: "Shows actionable care tasks for one reptile and resolves them through ReptileCare services.",
@@ -316,7 +320,7 @@ export class ReptileCareTodaysCareCard extends HTMLElement {
 
   _renderTaskList() {
     if (this._loading) {
-      return `<div class="message">Loading today's care…</div>`;
+      return `<div class="message loading" role="status" aria-live="polite">Loading today's care…</div>`;
     }
 
     if (this._error) {
@@ -324,13 +328,53 @@ export class ReptileCareTodaysCareCard extends HTMLElement {
     }
 
     if (!this._tasks.length) {
-      return `<div class="message empty">No care due.</div>`;
+      const summary = summarizeTaskList(
+        this._tasks,
+        this._config,
+        this._matchingEntityStates(),
+      );
+      return `
+        <div class="message empty" role="status" aria-live="polite">
+          <strong>${escapeHtml(summary.heading)}</strong>
+          <p>${escapeHtml(summary.body)}</p>
+        </div>
+      `;
     }
 
     return `
       <div class="task-list">
         ${this._tasks.map(() => `<reptilecare-task-list-item></reptilecare-task-list-item>`).join("")}
       </div>
+    `;
+  }
+
+  _renderSummaryPanel() {
+    const summary = summarizeTaskList(this._tasks, this._config, this._matchingEntityStates());
+    const reptileLabel = resolveReptileLabel(this._config, this._matchingEntityStates());
+
+    if (this._loading) {
+      return `
+        <section class="summary-panel loading" aria-live="polite">
+          <p class="summary-eyebrow">Loading care state</p>
+          <p class="summary-body">Fetching actionable tasks for ${escapeHtml(reptileLabel)}.</p>
+        </section>
+      `;
+    }
+
+    if (this._error) {
+      return `
+        <section class="summary-panel error" role="alert">
+          <p class="summary-eyebrow">Unable to load today's care</p>
+          <p class="summary-body">${escapeHtml(this._error)}</p>
+        </section>
+      `;
+    }
+
+    return `
+      <section class="summary-panel ${escapeHtml(summary.tone)}" aria-live="polite">
+        <p class="summary-eyebrow">${escapeHtml(summary.heading)}</p>
+        <p class="summary-body">${escapeHtml(summary.body)}</p>
+      </section>
     `;
   }
 
@@ -351,6 +395,62 @@ export class ReptileCareTodaysCareCard extends HTMLElement {
           display: grid;
           gap: 1rem;
           padding: 1rem;
+        }
+
+        .summary-panel {
+          display: grid;
+          gap: 0.35rem;
+          padding: 1rem 1.05rem;
+          border-radius: 18px;
+          background:
+            linear-gradient(
+              140deg,
+              color-mix(in srgb, var(--primary-color) 10%, transparent),
+              color-mix(in srgb, var(--secondary-background-color) 78%, transparent)
+            );
+        }
+
+        .summary-panel.warning {
+          background:
+            linear-gradient(
+              140deg,
+              color-mix(in srgb, var(--warning-color, #f0b400) 20%, transparent),
+              color-mix(in srgb, var(--error-color) 10%, transparent)
+            );
+        }
+
+        .summary-panel.error {
+          background:
+            linear-gradient(
+              140deg,
+              color-mix(in srgb, var(--error-color) 16%, transparent),
+              color-mix(in srgb, var(--secondary-background-color) 70%, transparent)
+            );
+        }
+
+        .summary-panel.clear {
+          background:
+            linear-gradient(
+              140deg,
+              color-mix(in srgb, var(--success-color, #2e7d32) 16%, transparent),
+              color-mix(in srgb, var(--secondary-background-color) 76%, transparent)
+            );
+        }
+
+        .summary-eyebrow,
+        .summary-body {
+          margin: 0;
+        }
+
+        .summary-eyebrow {
+          font-size: 1rem;
+          font-weight: 700;
+          line-height: 1.35;
+        }
+
+        .summary-body {
+          color: var(--secondary-text-color);
+          line-height: 1.45;
         }
 
         .header {
@@ -404,6 +504,10 @@ export class ReptileCareTodaysCareCard extends HTMLElement {
           padding-block: 1.25rem;
         }
 
+        .message.empty p {
+          margin: 0.45rem 0 0;
+        }
+
         .task-list {
           display: grid;
           gap: 0.85rem;
@@ -414,12 +518,13 @@ export class ReptileCareTodaysCareCard extends HTMLElement {
           <div class="header">
             <div class="title-wrap">
               <h2 class="title">${escapeHtml(this._config.title)}</h2>
-              <p class="subtitle">Actionable care tasks for one reptile</p>
+              <p class="subtitle">Actionable care tasks for ${escapeHtml(resolveReptileLabel(this._config, this._matchingEntityStates()))}</p>
             </div>
-            <button class="icon-button" type="button" data-refresh aria-label="Refresh today's care">
+            <button class="icon-button" type="button" data-refresh aria-label="Refresh today's care" ${this._loading || this._busyTaskId ? "disabled" : ""}>
               <ha-icon icon="mdi:refresh"></ha-icon>
             </button>
           </div>
+          ${this._renderSummaryPanel()}
           ${this._renderTaskList()}
           <reptilecare-task-completion-dialog></reptilecare-task-completion-dialog>
         </div>

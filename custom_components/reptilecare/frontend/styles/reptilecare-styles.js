@@ -26,6 +26,13 @@ export const sharedCardStyles = `
     background: color-mix(in srgb, var(--primary-color) 10%, var(--card-background-color));
   }
 
+  .action-button:active,
+  .quick-action-button:active,
+  .icon-button:active,
+  .dialog-button:active {
+    transform: translateY(1px);
+  }
+
   .action-button:focus-visible,
   .quick-action-button:focus-visible,
   .icon-button:focus-visible,

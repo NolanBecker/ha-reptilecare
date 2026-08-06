@@ -1,7 +1,7 @@
 # Frontend
 
-ReptileCare now ships its first bundled frontend module: the **Today's Care**
-custom Lovelace card.
+ReptileCare now ships its first production-facing frontend module: the
+**Today's Care** custom Lovelace card.
 
 This branch establishes the browser-side structure that future frontend work
 can reuse without reshuffling files or moving business logic back into cards.
@@ -12,6 +12,8 @@ The frontend layer should:
 
 - stay thin at the card level
 - consume the public Home Assistant service layer
+- reuse the existing ReptileCare entity layer for friendly status and refresh
+  cues
 - avoid direct repository or workflow access
 - reuse small frontend-side services, models, and dialogs
 - remain compatible with future cards such as Timeline, Health, and Summary
@@ -74,7 +76,8 @@ On load, the card:
 1. validates the card config
 2. calls `reptilecare.get_tasks` with `include_details: true`
 3. normalizes the returned task records into frontend models
-4. renders loading, empty, error, or task-list states
+4. combines those task records with existing per-reptile entity state
+5. renders loading, summary, empty, error, or task-list states
 
 ## Task display
 
@@ -85,13 +88,20 @@ Each task row shows:
 - due time
 - overdue or due-state badge
 - priority
+- optional care-plan label
 - optional short description
 
 The card intentionally displays only actionable pending tasks.
 
-When no tasks are due or upcoming for the selected reptile, the card renders:
+When no tasks are actionable, the card renders a friendly clear state such as:
 
-`No care due.`
+- `✨ Pixel is all caught up!`
+- `No care is currently due.`
+
+When overdue work exists, the card elevates that state with a warning summary
+such as:
+
+- `⚠️ Pixel needs attention`
 
 ## Quick actions
 
@@ -114,6 +124,9 @@ Quick actions still resolve through `reptilecare.resolve_task`.
 The card does not hardcode feeding outcomes. It reads the allowed outcomes from
 the `completion_schema` returned by `reptilecare.get_tasks`.
 
+If required structured fields exist, the card always uses the completion dialog
+instead of rendering quick actions directly.
+
 ## Completion dialog
 
 When a task has more than three outcomes or requires structured input, the card
@@ -127,6 +140,9 @@ The dialog shows:
 - dynamic structured fields from the referenced `TaskTemplate`
 - optional keeper notes
 - cancel and complete actions
+
+The dialog is keyboard accessible, uses the browser dialog element, and keeps
+focus inside the modal while open.
 
 Structured fields are serialized into `outcome_metadata`.
 Keeper notes are sent through the `notes` field.
@@ -143,6 +159,8 @@ The card refreshes when:
 
 This keeps the card aligned with existing runtime update behavior without
 adding a polling loop.
+
+The card does not implement a separate polling or scheduling layer.
 
 ## Service contracts used by the card
 
@@ -166,6 +184,10 @@ The frontend relies on two existing public services:
 This preserves the architectural rule that frontend code should not query
 repositories directly.
 
+The card also watches existing ReptileCare sensor, binary sensor, and button
+entities for the selected reptile so it can refresh after backend-driven task
+generation or resolution without duplicating state derivation rules.
+
 ## Future cards
 
 The current structure is intended to support future frontend modules such as:
@@ -180,6 +202,7 @@ Those future modules should reuse:
 
 - `reptilecare-api.js`
 - task normalization models
+- task sorting and summary helpers
 - shared formatting utilities
 - reusable task list and dialog components
 - shared styles

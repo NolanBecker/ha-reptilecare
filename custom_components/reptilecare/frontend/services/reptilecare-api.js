@@ -1,4 +1,4 @@
-import { normalizeTask } from "../models/todays-care-model.js";
+import { normalizeTask, sortTasks } from "../models/todays-care-model.js";
 
 const DOMAIN = "reptilecare";
 
@@ -23,7 +23,7 @@ export async function fetchTodaysCareTasks(hass, config) {
     include_details: true,
     include_terminal: false,
   });
-  return (response.tasks ?? []).map(normalizeTask);
+  return sortTasks((response.tasks ?? []).map(normalizeTask));
 }
 
 export async function resolveTask(hass, taskId, payload) {

@@ -11,11 +11,19 @@ describe("reptilecare api wrapper", () => {
       service_response: {
         tasks: [
           {
+            task_id: "task-2",
+            task_template_id: "builtin:feed_fruit",
+            care_plan_id: "plan-1",
+            due_at: "2026-08-06T15:00:00+00:00",
+            due_state: "upcoming",
+            completion_schema: { outcomes: [], context_fields: [] },
+          },
+          {
             task_id: "task-1",
             task_template_id: "builtin:feed_fruit",
             care_plan_id: "plan-1",
-            due_at: "2026-08-05T12:00:00+00:00",
-            due_state: "due",
+            due_at: "2026-08-06T09:00:00+00:00",
+            due_state: "overdue",
             completion_schema: { outcomes: [], context_fields: [] },
           },
         ],
@@ -34,7 +42,7 @@ describe("reptilecare api wrapper", () => {
         include_terminal: false,
       },
     );
-    expect(tasks[0].task_id).toBe("task-1");
+    expect(tasks.map((task) => task.task_id)).toEqual(["task-1", "task-2"]);
     expect(tasks[0].presentation.title).toBe("builtin:feed_fruit");
   });
 
