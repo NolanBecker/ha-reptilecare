@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/NolanBecker/ha-reptilecare/compare/v0.2.0...v0.3.0) (2026-08-06)
+
+
+### Features
+
+* **events:** add reactive update system ([f5540c9](https://github.com/NolanBecker/ha-reptilecare/commit/f5540c96d6883ce700f84c27f6bae9fedd570e35))
+
 ## [0.2.0](https://github.com/NolanBecker/ha-reptilecare/compare/v0.1.3...v0.2.0) (2026-08-06)
 
 
