@@ -30,6 +30,7 @@ from .frontend_support import (
     async_unregister_frontend_assets,
 )
 from .reptile_storage import HomeAssistantReptilePersistence
+from .runtime_updates import HomeAssistantRuntimeEventPublisher
 from .services import async_register_services, async_unregister_services
 from .storage import HomeAssistantCareEventStore
 from .task_generation import CareTaskGenerator, ScheduleCalculator
@@ -98,12 +99,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
     store = HomeAssistantCareEventStore(hass, entry.entry_id)
     await store.async_load()
     workflow_evaluator = WorkflowEvaluator(workflow_graphs)
+    coordinator = ReptileCareCoordinator(
+        hass=hass,
+        config_entry=entry,
+        event_store=store,
+    )
+    event_publisher = HomeAssistantRuntimeEventPublisher(hass, coordinator, store)
     care_engine = CareEngine(
         care_task_repository,
         task_templates,
         workflow_graphs,
         store,
         workflow_evaluator,
+        event_publisher=event_publisher,
     )
     await care_engine.async_reconcile_pending_operations()
     care_task_generator = CareTaskGenerator(
@@ -113,6 +121,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
         workflow_graphs,
         care_task_repository,
         schedule_calculator,
+        event_publisher=event_publisher,
     )
     generation_result = await care_task_generator.async_generate(now=datetime.now(UTC))
     if generation_result.errors:
@@ -123,11 +132,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
                 message,
             )
 
-    coordinator = ReptileCareCoordinator(
-        hass=hass,
-        config_entry=entry,
-        event_store=store,
-    )
     try:
         await coordinator.async_config_entry_first_refresh()
     except ConfigEntryError as err:
@@ -157,6 +161,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
         workflow_evaluator=workflow_evaluator,
         care_engine=care_engine,
         entity_projection=entity_projection,
+        event_publisher=event_publisher,
     )
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
     async_register_services(hass)

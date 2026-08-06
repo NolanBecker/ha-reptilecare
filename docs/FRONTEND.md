@@ -160,6 +160,10 @@ The card refreshes when:
 This keeps the card aligned with existing runtime update behavior without
 adding a polling loop.
 
+Those refreshes now originate from backend application events translated into
+Home Assistant dispatcher signals and then reflected through the existing
+ReptileCare entity layer.
+
 The card does not implement a separate polling or scheduling layer.
 
 ## Service contracts used by the card

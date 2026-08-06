@@ -11,8 +11,11 @@ import pytest
 from custom_components.reptilecare.application import (
     CareEngine,
     CareEnginePersistenceError,
+    CareEventRecorded,
+    CareTaskCreated,
     CareTaskResolutionNotAllowedError,
     CareTaskResolutionRequest,
+    CareTaskResolved,
     ConflictingTaskResolutionError,
     CreateTaskEffect,
     InvalidTaskContextError,
@@ -71,6 +74,17 @@ PLAN_ID = "123e4567-e89b-12d3-a456-426614174000"
 TASK_ID = "223e4567-e89b-12d3-a456-426614174000"
 
 
+class _RecordingPublisher:
+    def __init__(self) -> None:
+        self.events: list[object] = []
+
+    async def async_publish(self, event: object) -> None:
+        self.events.append(event)
+
+    async def async_publish_many(self, events: tuple[object, ...]) -> None:
+        self.events.extend(events)
+
+
 def _pixel() -> Reptile:
     return Reptile(
         reptile_id=PIXEL_ID,
@@ -110,6 +124,7 @@ def _feed_task() -> CareTask:
 
 async def _build_engine(
     *tasks: CareTask,
+    publisher: _RecordingPublisher | None = None,
 ) -> tuple[CareEngine, CareTaskRepository, MemoryCareEventStore]:
     reptile_repository = ReptileRepository(
         SpeciesProfileRegistry.load_builtin_profiles(),
@@ -141,6 +156,7 @@ async def _build_engine(
         workflow_graphs,
         event_store,
         WorkflowEvaluator(workflow_graphs),
+        event_publisher=publisher,
     )
     return engine, task_repository, event_store
 
@@ -207,6 +223,40 @@ def test_same_request_replays_without_duplicate_event_or_task() -> None:
         assert second.created_follow_up_tasks == ()
         assert len(second.existing_follow_up_tasks) == 1
         assert len(await event_store.async_list_events()) == 1
+
+    asyncio.run(_run())
+
+
+def test_resolution_publishes_application_events_once() -> None:
+    """A fresh resolution emits resolved, recorded, and follow-up events."""
+
+    async def _run() -> None:
+        publisher = _RecordingPublisher()
+        engine, _, _ = await _build_engine(_feed_task(), publisher=publisher)
+
+        first = await engine.async_resolve_task(
+            TASK_ID,
+            CareTaskResolutionRequest(
+                action=ResolutionAction.COMPLETE,
+                outcome_id="ate_normally",
+                completed_at=datetime(2026, 8, 3, 12, 30, tzinfo=UTC),
+            ),
+        )
+        second = await engine.async_resolve_task(
+            TASK_ID,
+            CareTaskResolutionRequest(
+                action=ResolutionAction.COMPLETE,
+                outcome_id="ate_normally",
+                completed_at=datetime(2026, 8, 3, 12, 30, tzinfo=UTC),
+            ),
+        )
+
+        assert not first.replayed_existing_result
+        assert second.replayed_existing_result
+        assert any(isinstance(event, CareTaskResolved) for event in publisher.events)
+        assert any(isinstance(event, CareEventRecorded) for event in publisher.events)
+        assert any(isinstance(event, CareTaskCreated) for event in publisher.events)
+        assert len(publisher.events) == 3
 
     asyncio.run(_run())
 

@@ -12,7 +12,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import ReptileCareConfigEntry
 from .entity import ReptileCareEntity, async_setup_reptile_platform
-from .runtime_updates import async_notify_runtime_updated
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,7 +46,6 @@ class ReptileGenerateTasksButton(ReptileCareEntity, ButtonEntity):
             now=datetime.now(UTC),
             reptile_id=self._reptile_id,
         )
-        async_notify_runtime_updated(self.hass)
         if result.errors and not (
             result.created_task_ids
             or result.existing_task_ids

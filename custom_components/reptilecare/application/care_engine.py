@@ -45,6 +45,12 @@ from ..domain.workflow import (
 )
 from ..models import CareEvent, CareEventType
 from ..storage import CareEventStore
+from .events import (
+    CareEventRecorded,
+    CareTaskCreated,
+    CareTaskResolved,
+    ReptileCareEventPublisher,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -411,12 +417,15 @@ class CareEngine:
         workflow_graphs: WorkflowRegistry,
         event_store: CareEventStore,
         workflow_evaluator: WorkflowEvaluator,
+        *,
+        event_publisher: ReptileCareEventPublisher | None = None,
     ) -> None:
         self._task_repository = task_repository
         self._task_templates = task_templates
         self._workflow_graphs = workflow_graphs
         self._event_store = event_store
         self._workflow_evaluator = workflow_evaluator
+        self._event_publisher = event_publisher
 
     async def async_reconcile_pending_operations(self) -> tuple[str, ...]:
         """Resume incomplete persisted care operations without duplicating work."""
@@ -477,7 +486,43 @@ class CareEngine:
             resolution_reconciled_at=None,
         )
         await self._task_repository.async_update(resolved_task)
-        return await self._reconcile_task_resolution(resolved_task)
+        result = await self._reconcile_task_resolution(resolved_task)
+        await self._async_publish_resolution_events(result)
+        return result
+
+    async def _async_publish_resolution_events(
+        self,
+        result: CareTaskResolutionResult,
+    ) -> None:
+        """Publish post-resolution events after successful reconciliation."""
+        if self._event_publisher is None or result.replayed_existing_result:
+            return
+
+        events: list[CareEventRecorded | CareTaskCreated | CareTaskResolved] = [
+            CareTaskResolved(
+                reptile_id=result.task.reptile_id,
+                task_id=result.task.task_id,
+                care_plan_id=result.task.care_plan_id,
+                event_id=str(result.care_event.event_id),
+            ),
+            CareEventRecorded(
+                reptile_id=result.care_event.reptile_id,
+                event_id=str(result.care_event.event_id),
+                event_type=result.care_event.event_type.value,
+                task_id=result.care_event.task_id,
+                care_plan_id=result.care_event.care_plan_id,
+            ),
+        ]
+        events.extend(
+            CareTaskCreated(
+                reptile_id=task.reptile_id,
+                task_id=task.task_id,
+                care_plan_id=task.care_plan_id,
+                task_template_id=task.task_template_id,
+            )
+            for task in result.created_follow_up_tasks
+        )
+        await self._event_publisher.async_publish_many(tuple(events))
 
     async def _replay_or_raise(
         self,

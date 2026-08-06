@@ -20,14 +20,27 @@ from .care_engine import (
     ResolutionAction,
     WorkflowEvaluator,
 )
+from .events import (
+    CareEventRecorded,
+    CarePlanUpdated,
+    CareTaskCreated,
+    CareTaskResolved,
+    ReptileCareApplicationEvent,
+    ReptileCareEventPublisher,
+    ReptileUpdated,
+)
 
 __all__ = [
+    "CareEventRecorded",
     "CareEngine",
     "CareEngineError",
     "CareEnginePersistenceError",
+    "CarePlanUpdated",
     "CareTaskResolutionNotAllowedError",
     "CareTaskResolutionRequest",
     "CareTaskResolutionResult",
+    "CareTaskCreated",
+    "CareTaskResolved",
     "CompleteWorkflowEffect",
     "ConflictingTaskResolutionError",
     "CreateEventEffect",
@@ -38,6 +51,9 @@ __all__ = [
     "MissingTaskTemplateReferenceError",
     "MissingWorkflowGraphReferenceError",
     "NoOpEffect",
+    "ReptileCareApplicationEvent",
+    "ReptileCareEventPublisher",
+    "ReptileUpdated",
     "ResolutionAction",
     "WorkflowEvaluator",
 ]

@@ -221,6 +221,8 @@ and application layers. Notifications and richer UI remain future work.
   evaluation, follow-up generation, and restart reconciliation
 - [Home Assistant services](docs/HOME_ASSISTANT_SERVICES.md) — service
   contracts, identifiers, responses, and examples
+- [Live updates](docs/LIVE_UPDATES.md) — application events, dispatcher
+  translation, and reactive entity/frontend refresh behavior
 - [Entities](docs/ENTITIES.md) — reptile devices, summary sensors, binary
   sensors, buttons, and projection behavior
 - [Frontend](docs/FRONTEND.md) — bundled frontend architecture, the Today's
@@ -273,6 +275,9 @@ ReptileCare now also ships a bundled custom Lovelace card:
 The card is served by the integration itself and retrieves actionable tasks
 through the existing `reptilecare.get_tasks` and `reptilecare.resolve_task`
 services rather than bypassing the public application API.
+
+Backend writes now flow through a lightweight application-event layer so
+services, entities, and the bundled frontend refresh without polling.
 
 See [Frontend](docs/FRONTEND.md) for card configuration, lifecycle, empty and
 overdue states, quick-action behavior, and completion-dialog behavior.

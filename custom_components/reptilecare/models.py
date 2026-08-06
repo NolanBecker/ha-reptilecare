@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 if TYPE_CHECKING:
+    from .application import ReptileCareEventPublisher
     from .application.care_engine import CareEngine, WorkflowEvaluator
     from .coordinator import ReptileCareCoordinator
     from .domain.care_plan import CarePlanRepository
@@ -163,6 +164,7 @@ class ReptileCareRuntimeData:
     workflow_evaluator: WorkflowEvaluator
     care_engine: CareEngine
     entity_projection: ReptileCareEntityProjection
+    event_publisher: ReptileCareEventPublisher
 
     @property
     def timeline(self) -> Timeline:

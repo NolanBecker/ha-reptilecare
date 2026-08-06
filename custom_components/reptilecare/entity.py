@@ -12,7 +12,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import ReptileCareConfigEntry
-from .const import DOMAIN, MANUFACTURER, SIGNAL_RUNTIME_UPDATED
+from .const import DOMAIN, MANUFACTURER, SIGNAL_RUNTIME_EVENT
 from .coordinator import ReptileCareCoordinator
 from .domain.reptile import Reptile
 
@@ -88,13 +88,13 @@ class ReptileCareEntity(CoordinatorEntity[ReptileCareCoordinator]):
         self.async_on_remove(
             async_dispatcher_connect(
                 self.hass,
-                SIGNAL_RUNTIME_UPDATED,
+                SIGNAL_RUNTIME_EVENT,
                 self._handle_runtime_updated,
             )
         )
 
     @callback
-    def _handle_runtime_updated(self) -> None:
+    def _handle_runtime_updated(self, _event: dict[str, object]) -> None:
         """Refresh entity state on repository-driven runtime updates."""
         reptile = self.reptile
         if reptile is not None:
@@ -119,7 +119,7 @@ async def async_setup_reptile_platform(
     known_ids: set[str] = set()
 
     @callback
-    def _schedule_add_missing() -> None:
+    def _schedule_add_missing(_event: dict[str, object]) -> None:
         entry.runtime_data.coordinator.hass.async_create_task(_async_add_missing())
 
     async def _async_add_missing() -> None:
@@ -143,7 +143,7 @@ async def async_setup_reptile_platform(
     entry.async_on_unload(
         async_dispatcher_connect(
             entry.runtime_data.coordinator.hass,
-            SIGNAL_RUNTIME_UPDATED,
+            SIGNAL_RUNTIME_EVENT,
             _schedule_add_missing,
         )
     )

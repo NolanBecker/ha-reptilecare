@@ -105,8 +105,8 @@ service.
 ## Dynamic Entity Creation
 
 Reptiles created after integration setup are discovered dynamically without a
-Home Assistant restart. The entity platforms subscribe to a runtime update
-signal that is emitted after:
+Home Assistant restart. The entity platforms subscribe to runtime event signals
+that are emitted after:
 
 - reptile create, update, enable, and disable
 - care-plan create, update, enable, and disable

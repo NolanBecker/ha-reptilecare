@@ -34,15 +34,10 @@ def _button(generator_result: TaskGenerationResult) -> ReptileGenerateTasksButto
 
 
 def test_generate_tasks_button_logs_success(monkeypatch, caplog) -> None:
-    """Successful generation logs a concise summary and notifies runtime listeners."""
+    """Successful generation logs a concise summary."""
     caplog.set_level("INFO")
 
     async def _run() -> None:
-        notified: list[object] = []
-        monkeypatch.setattr(
-            "custom_components.reptilecare.button.async_notify_runtime_updated",
-            lambda hass: notified.append(hass),
-        )
         button = _button(
             TaskGenerationResult(
                 created_task_ids=("task-1",),
@@ -53,7 +48,6 @@ def test_generate_tasks_button_logs_success(monkeypatch, caplog) -> None:
 
         await button.async_press()
 
-        assert notified == [button.hass]
         assert "created=1 existing=1 skipped=1" in caplog.text
 
     asyncio.run(_run())
@@ -66,10 +60,6 @@ def test_generate_tasks_button_logs_warning_for_partial_errors(
     caplog.set_level("WARNING")
 
     async def _run() -> None:
-        monkeypatch.setattr(
-            "custom_components.reptilecare.button.async_notify_runtime_updated",
-            lambda hass: None,
-        )
         button = _button(
             TaskGenerationResult(
                 created_task_ids=("task-1",),
@@ -89,10 +79,6 @@ def test_generate_tasks_button_raises_for_total_failure(monkeypatch, caplog) -> 
     caplog.set_level("ERROR")
 
     async def _run() -> None:
-        monkeypatch.setattr(
-            "custom_components.reptilecare.button.async_notify_runtime_updated",
-            lambda hass: None,
-        )
         button = _button(TaskGenerationResult(errors={"plan-1": "missing template"}))
 
         with pytest.raises(HomeAssistantError, match="plan-1: missing template"):

@@ -282,7 +282,9 @@ and are intentionally organized for reuse:
 The first card, **Today's Care**, stays thin. It validates `reptile_id` or
 `slug`, loads actionable tasks through `reptilecare.get_tasks`, resolves task
 completion through `reptilecare.resolve_task`, and refreshes from existing
-entity-driven runtime updates instead of polling.
+entity-driven runtime updates instead of polling. Those updates now come from a
+typed application-event layer translated into Home Assistant dispatcher
+signals.
 
 Task presentation, quick-action eligibility, and completion payload assembly
 remain in reusable frontend modules so future cards can share them.
@@ -308,6 +310,19 @@ The projection layer does not:
 
 This keeps entity behavior aligned with the same repositories and due-state
 projection used by services and tests.
+
+## Reactive updates
+
+ReptileCare now uses a lightweight event-driven adapter path for runtime
+refresh:
+
+- application services publish typed events after persisted writes
+- a Home Assistant publisher translates those events into dispatcher signals
+- entity platforms refresh state and discover new reptiles dynamically
+- the bundled frontend card refreshes from the resulting entity state changes
+
+This keeps the domain and application layers free of Home Assistant imports
+while avoiding polling and scattered manual refresh calls.
 
 ## Why state is derived
 

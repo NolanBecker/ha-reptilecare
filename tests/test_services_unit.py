@@ -114,6 +114,14 @@ async def _runtime_with_repositories(
     tasks: tuple[CareTask, ...] = (),
     events: tuple[CareEvent, ...] = (),
 ) -> SimpleNamespace:
+    published_events: list[object] = []
+
+    async def _publish(event: object) -> None:
+        published_events.append(event)
+
+    async def _publish_many(events: tuple[object, ...]) -> None:
+        published_events.extend(events)
+
     species_profiles = SpeciesProfileRegistry.load_builtin_profiles()
     reptile_repository = ReptileRepository(
         species_profiles,
@@ -144,10 +152,16 @@ async def _runtime_with_repositories(
         async_refresh=lambda: asyncio.sleep(0),
         timeline=timeline,
     )
+    event_publisher = SimpleNamespace(
+        async_publish=_publish,
+        async_publish_many=_publish_many,
+        published_events=published_events,
+    )
 
     return SimpleNamespace(
         coordinator=coordinator,
         event_store=event_store,
+        event_publisher=event_publisher,
         species_profiles=species_profiles,
         reptile_repository=reptile_repository,
         task_templates=task_templates,
@@ -180,10 +194,6 @@ def test_reptile_and_care_plan_handlers(monkeypatch) -> None:
         monkeypatch.setattr(
             "custom_components.reptilecare.services._runtime",
             lambda hass: runtime,
-        )
-        monkeypatch.setattr(
-            "custom_components.reptilecare.services.async_notify_runtime_updated",
-            lambda hass: None,
         )
 
         created = await _async_handle_create_reptile(
@@ -358,10 +368,6 @@ def test_generation_resolution_event_and_health_handlers(monkeypatch) -> None:
         monkeypatch.setattr(
             "custom_components.reptilecare.services._runtime",
             lambda hass: runtime,
-        )
-        monkeypatch.setattr(
-            "custom_components.reptilecare.services.async_notify_runtime_updated",
-            lambda hass: None,
         )
 
         generated = await _async_handle_generate_tasks(

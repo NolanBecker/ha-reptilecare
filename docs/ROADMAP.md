@@ -145,6 +145,7 @@ Phase 6 has now begun with the first production frontend foundation:
 
 - bundled static frontend modules served by the integration
 - a Today's Care card backed by the public Home Assistant service layer
+- reactive backend-driven refreshes without polling
 - dynamic outcome rendering from `TaskTemplate` definitions
 - quick actions for simple outcome sets
 - a reusable task completion dialog path for richer templates

@@ -4,6 +4,7 @@ from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from custom_components.reptilecare.application import CareTaskCreated
 from custom_components.reptilecare.domain.care_plan import (
     CarePlan,
     CarePlanRepository,
@@ -119,6 +120,17 @@ async def _task_repository(
     )
     await repository.async_load()
     return repository
+
+
+class _RecordingPublisher:
+    def __init__(self) -> None:
+        self.events: list[object] = []
+
+    async def async_publish(self, event: object) -> None:
+        self.events.append(event)
+
+    async def async_publish_many(self, events: tuple[object, ...]) -> None:
+        self.events.extend(events)
 
 
 def test_schedule_first_and_next_occurrence_daily() -> None:
@@ -380,3 +392,29 @@ async def test_restart_safe_reconciliation_recreates_only_missing_occurrence() -
     recreated = restored_repository.get(regenerated.created_task_ids[0])
     assert recreated.generation_key == removed.generation_key
     assert recreated.generation_reason is CareTaskGenerationReason.SYSTEM_RECONCILIATION
+
+
+async def test_generation_publishes_created_task_events() -> None:
+    """Persisted generation emits one application event per created task."""
+    reptile_repository = await _reptile_repository(_pixel())
+    care_plan_repository = await _care_plan_repository(reptile_repository, _plan())
+    task_repository = await _task_repository(reptile_repository, care_plan_repository)
+    publisher = _RecordingPublisher()
+    generator = CareTaskGenerator(
+        reptile_repository,
+        care_plan_repository,
+        TaskTemplateRegistry.load_builtin_templates(),
+        WorkflowRegistry.load_builtin_workflows(),
+        task_repository,
+        ScheduleCalculator(),
+        event_publisher=publisher,
+    )
+
+    result = await generator.async_generate(
+        now=datetime(2026, 8, 5, 12, tzinfo=UTC),
+    )
+
+    assert result.created_task_ids
+    assert publisher.events
+    assert all(isinstance(event, CareTaskCreated) for event in publisher.events)
+    assert {event.task_id for event in publisher.events} == set(result.created_task_ids)

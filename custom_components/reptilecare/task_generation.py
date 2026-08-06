@@ -11,6 +11,7 @@ from types import MappingProxyType
 from uuid import NAMESPACE_URL, uuid5
 from zoneinfo import ZoneInfo
 
+from .application import CareTaskCreated, ReptileCareEventPublisher
 from .domain.care_plan import (
     CarePlan,
     CarePlanRepository,
@@ -171,6 +172,7 @@ class CareTaskGenerator:
         *,
         default_look_ahead: timedelta = DEFAULT_TASK_GENERATION_LOOK_AHEAD,
         default_look_back: timedelta = DEFAULT_TASK_GENERATION_LOOK_BACK,
+        event_publisher: ReptileCareEventPublisher | None = None,
     ) -> None:
         """Initialize the generator with validated dependencies."""
         for name, value in (
@@ -187,6 +189,7 @@ class CareTaskGenerator:
         self._schedule_calculator = schedule_calculator
         self._default_look_ahead = default_look_ahead
         self._default_look_back = default_look_back
+        self._event_publisher = event_publisher
 
     async def async_generate(
         self,
@@ -206,9 +209,20 @@ class CareTaskGenerator:
             care_plan_id=care_plan_id,
         )
         created: list[str] = []
+        created_events: list[CareTaskCreated] = []
         for task in preview.would_create:
             await self._task_repository.async_add(task)
             created.append(task.task_id)
+            created_events.append(
+                CareTaskCreated(
+                    reptile_id=task.reptile_id,
+                    task_id=task.task_id,
+                    care_plan_id=task.care_plan_id,
+                    task_template_id=task.task_template_id,
+                )
+            )
+        if self._event_publisher is not None and created_events:
+            await self._event_publisher.async_publish_many(tuple(created_events))
         return TaskGenerationResult(
             created_task_ids=tuple(created),
             existing_task_ids=tuple(task.task_id for task in preview.already_exists),
