@@ -148,6 +148,13 @@ access token allows release PRs, tags, and releases to trigger downstream
 GitHub Actions consistently. `GITHUB_TOKEN` works as a fallback, but GitHub may
 skip follow-on workflow execution for automation-created refs.
 
+If Release Please fails with a message saying GitHub Actions is not permitted
+to create pull requests, the workflow is using the fallback `GITHUB_TOKEN`
+while the repository setting that allows Actions to create and approve pull
+requests is disabled. The recommended fix for this repository is to add a
+`RELEASE_PLEASE_TOKEN` secret. Only rely on `GITHUB_TOKEN` if that repository
+setting is intentionally enabled.
+
 Safe verification method:
 
 1. Merge this baseline fix as `chore(release): fix Release Please baseline`.
