@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0](https://github.com/NolanBecker/ha-reptilecare/compare/v0.1.3...v0.2.0) (2026-08-06)
+
+
+### Features
+
+* **frontend:** add Today's Care card ([c306859](https://github.com/NolanBecker/ha-reptilecare/commit/c306859a0690f2b12733525f1ee9d8e7add6a2a6))
+* **frontend:** add Today's Care card ([09b5fea](https://github.com/NolanBecker/ha-reptilecare/commit/09b5feab661e83326a3e55c76ace9305df438fbb))
+
 ## [0.1.3](https://github.com/NolanBecker/ha-reptilecare/compare/v0.1.2...v0.1.3) (2026-08-06)
 
 
