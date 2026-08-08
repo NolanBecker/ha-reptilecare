@@ -70,12 +70,6 @@ async def test_user_flow_creates_entry(hass: HomeAssistant) -> None:
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], user_input={"generate_initial_tasks": True}
     )
-    assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "finish"
-
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input={}
-    )
     await hass.async_block_till_done()
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
@@ -290,3 +284,107 @@ def test_async_get_options_flow_returns_options_flow_instance() -> None:
         )
     )
     assert isinstance(flow, ReptileCareOptionsFlow)
+
+
+def test_config_flow_init_does_not_load_content(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ConfigFlow construction must not perform blocking content I/O."""
+    calls: list[str] = []
+
+    async def _raise_if_called(*_args: object, **_kwargs: object) -> object:
+        calls.append("called")
+        raise AssertionError("content loading should not happen in __init__")
+
+    monkeypatch.setattr(
+        "custom_components.reptilecare.config_flow.async_load_builtin_content",
+        _raise_if_called,
+    )
+
+    ReptileCareConfigFlow()
+
+    assert calls == []
+
+
+async def test_content_loading_uses_executor_once_per_config_flow(
+    hass: HomeAssistant,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Onboarding content should load through the executor once and be reused."""
+    calls: list[object] = []
+    original = hass.async_add_executor_job
+
+    async def _spy(func, *args):
+        calls.append(func)
+        return await original(func, *args)
+
+    monkeypatch.setattr(hass, "async_add_executor_job", _spy)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input={}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={"display_name": "Pixel", "sex": "unknown"},
+    )
+    assert result["step_id"] == "species"
+    assert calls == [load_builtin_content]
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={"species_id": "builtin:gargoyle_gecko"},
+    )
+    assert result["step_id"] == "recommended_care"
+    assert calls == [load_builtin_content]
+
+
+async def test_content_loading_failure_aborts_flow_gracefully(
+    hass: HomeAssistant,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Malformed content should abort onboarding instead of crashing Home Assistant."""
+
+    async def _raise_content_error(*_args: object, **_kwargs: object) -> object:
+        raise RuntimeError("invalid packaged content")
+
+    monkeypatch.setattr(
+        "custom_components.reptilecare.config_flow.async_load_builtin_content",
+        _raise_content_error,
+    )
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input={}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={"display_name": "Pixel", "sex": "unknown"},
+    )
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "content_unavailable"
+
+
+@pytest.mark.asyncio
+async def test_options_flow_reuses_runtime_content_without_loading(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Options flow should reuse runtime content and avoid filesystem loading."""
+    flow = _fake_options_flow()
+
+    async def _raise_if_called(*_args: object, **_kwargs: object) -> object:
+        raise AssertionError("options flow should not load content from disk")
+
+    monkeypatch.setattr(
+        "custom_components.reptilecare.config_flow.async_load_builtin_content",
+        _raise_if_called,
+    )
+
+    result = await flow.async_step_add_reptile_species()
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "species"

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+import logging
 from typing import Any
 
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow
@@ -11,7 +12,8 @@ from homeassistant.helpers import selector
 import voluptuous as vol
 
 from .const import DOMAIN, INTEGRATION_NAME
-from .content.loader import load_builtin_content
+from .content.async_loader import async_load_builtin_content
+from .content.loader import BuiltinContentBundle
 from .models import ReptileCareRuntimeData
 from .onboarding import (
     OnboardingRequest,
@@ -22,6 +24,8 @@ from .onboarding import (
     species_choices,
 )
 
+_LOGGER = logging.getLogger(__name__)
+
 
 class ReptileCareConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for ReptileCare."""
@@ -30,7 +34,7 @@ class ReptileCareConfigFlow(ConfigFlow, domain=DOMAIN):
     MINOR_VERSION = 1
 
     def __init__(self) -> None:
-        self._content = load_builtin_content().bundle
+        self._content: BuiltinContentBundle | None = None
         self._draft: dict[str, Any] = {}
 
     async def async_step_user(
@@ -84,13 +88,17 @@ class ReptileCareConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Select a species from the built-in catalog."""
+        content = await self._async_get_content()
+        if content is None:
+            return self.async_abort(reason="content_unavailable")
+
         if user_input is not None:
             self._draft.update(user_input)
             return await self.async_step_recommended_care()
 
         options = [
             selector.SelectOptionDict(value=value, label=label)
-            for value, label in species_choices(self._content)
+            for value, label in species_choices(content)
         ]
         return self.async_show_form(
             step_id="species",
@@ -110,16 +118,18 @@ class ReptileCareConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Select recommended care plans for the chosen species."""
+        content = await self._async_get_content()
+        if content is None:
+            return self.async_abort(reason="content_unavailable")
+
         species_id = str(self._draft["species_id"])
         options = [
             selector.SelectOptionDict(value=value, label=label)
-            for value, label in recommended_care_plan_choices(self._content, species_id)
+            for value, label in recommended_care_plan_choices(content, species_id)
         ]
         default = [
             value
-            for value, _label in recommended_care_plan_choices(
-                self._content, species_id
-            )
+            for value, _label in recommended_care_plan_choices(content, species_id)
         ]
         if user_input is not None:
             self._draft["selected_care_plan_ids"] = tuple(
@@ -167,19 +177,31 @@ class ReptileCareConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Create the config entry with pending onboarding data."""
-        if user_input is not None:
-            return self.async_create_entry(
-                title=INTEGRATION_NAME,
-                data={"onboarding": serialize_request(_build_request(self._draft))},
-            )
-
-        return self.async_show_form(step_id="finish", data_schema=vol.Schema({}))
+        _ = user_input
+        return self.async_create_entry(
+            title=INTEGRATION_NAME,
+            data={"onboarding": serialize_request(_build_request(self._draft))},
+        )
 
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
         """Return the ReptileCare options flow."""
         return ReptileCareOptionsFlow(config_entry)
+
+    async def _async_get_content(self) -> BuiltinContentBundle | None:
+        """Load and cache built-in content through Home Assistant's executor."""
+        if self._content is not None:
+            return self._content
+        try:
+            content_result = await async_load_builtin_content(self.hass)
+        except Exception:
+            _LOGGER.exception("Unable to load built-in onboarding content")
+            return None
+        for warning in content_result.warnings:
+            _LOGGER.warning("Built-in content warning: %s", warning)
+        self._content = content_result.bundle
+        return self._content
 
 
 class ReptileCareOptionsFlow(OptionsFlow):
@@ -190,6 +212,10 @@ class ReptileCareOptionsFlow(OptionsFlow):
         self._runtime: ReptileCareRuntimeData = config_entry.runtime_data
         self._content = self._runtime.content
         self._draft: dict[str, Any] = {}
+
+    async def _async_get_content(self) -> BuiltinContentBundle | None:
+        """Reuse already-loaded runtime content without hitting the filesystem."""
+        return self._content
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
