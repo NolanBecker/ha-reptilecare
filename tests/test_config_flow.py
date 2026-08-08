@@ -1,12 +1,24 @@
 """Tests for the ReptileCare config flow."""
 
+from datetime import date
+from types import SimpleNamespace
+
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.reptilecare.config_flow import (
+    ReptileCareConfigFlow,
+    ReptileCareOptionsFlow,
+    _build_request,
+    _coerce_date,
+    _optional_text,
+)
 from custom_components.reptilecare.const import DOMAIN, INTEGRATION_NAME
+from custom_components.reptilecare.content.loader import load_builtin_content
 
 
 async def test_user_flow_creates_entry(hass: HomeAssistant) -> None:
@@ -91,3 +103,190 @@ async def test_user_flow_aborts_when_configured(hass: HomeAssistant) -> None:
 
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] in {"already_configured", "single_instance_allowed"}
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (" Pixel ", "Pixel"),
+        ("", None),
+        (None, None),
+        (1, None),
+    ],
+)
+def test_optional_text_normalizes_expected_values(
+    value: object, expected: str | None
+) -> None:
+    """Optional text helper should trim strings and ignore non-strings."""
+    assert _optional_text(value) == expected
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (None, None),
+        ("", None),
+        ("2026-08-08", date(2026, 8, 8)),
+        (date(2026, 8, 8), date(2026, 8, 8)),
+    ],
+)
+def test_coerce_date_handles_empty_string_iso_text_and_date_objects(
+    value: object, expected: date | None
+) -> None:
+    """Date coercion should accept plain dates and ISO-formatted strings."""
+    assert _coerce_date(value) == expected
+
+
+def test_build_request_normalizes_draft_payload() -> None:
+    """Building an onboarding request should normalize optional fields."""
+    request = _build_request(
+        {
+            "display_name": "Pixel",
+            "nickname": " Pix ",
+            "species_id": "builtin:gargoyle_gecko",
+            "selected_care_plan_ids": ("builtin:spot_clean_daily",),
+            "generate_initial_tasks": 1,
+            "morph": " Orange blotch ",
+            "sex": "unknown",
+            "hatch_date": "2026-08-08",
+            "notes": " First reptile ",
+        }
+    )
+
+    assert request.display_name == "Pixel"
+    assert request.nickname == "Pix"
+    assert request.species_id == "builtin:gargoyle_gecko"
+    assert request.selected_care_plan_ids == ("builtin:spot_clean_daily",)
+    assert request.generate_initial_tasks is True
+    assert request.morph == "Orange blotch"
+    assert request.sex == "unknown"
+    assert request.hatch_date == date(2026, 8, 8)
+    assert request.notes == "First reptile"
+
+
+def _fake_options_flow() -> ReptileCareOptionsFlow:
+    content = load_builtin_content().bundle
+    config_entry = SimpleNamespace(
+        options={"generate_tasks_on_startup": False},
+        runtime_data=SimpleNamespace(content=content),
+    )
+    return ReptileCareOptionsFlow(config_entry)
+
+
+@pytest.mark.asyncio
+async def test_options_flow_menu_and_forms_render() -> None:
+    """Options flow should expose each management step as a form or menu."""
+    flow = _fake_options_flow()
+
+    menu = await flow.async_step_init()
+    add_reptile = await flow.async_step_add_reptile()
+    species = await flow.async_step_add_reptile_species()
+    install_content = await flow.async_step_install_builtin_content()
+    import_demo = await flow.async_step_import_demo_data()
+    general = await flow.async_step_general_settings()
+
+    assert menu["type"] is FlowResultType.MENU
+    assert menu["menu_options"] == [
+        "add_reptile",
+        "install_builtin_content",
+        "import_demo_data",
+        "general_settings",
+    ]
+    assert add_reptile["type"] is FlowResultType.FORM
+    assert add_reptile["step_id"] == "reptile"
+    assert species["type"] is FlowResultType.FORM
+    assert species["step_id"] == "species"
+    assert install_content["type"] is FlowResultType.FORM
+    assert install_content["step_id"] == "install_builtin_content"
+    assert import_demo["type"] is FlowResultType.FORM
+    assert import_demo["step_id"] == "import_demo_data"
+    assert general["type"] is FlowResultType.FORM
+    assert general["step_id"] == "general_settings"
+
+
+@pytest.mark.asyncio
+async def test_options_flow_add_reptile_executes_onboarding(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Add-reptile options flow should delegate persistence through onboarding."""
+    flow = _fake_options_flow()
+    calls: list[object] = []
+
+    async def _apply(runtime: object, request: object) -> None:
+        calls.extend((runtime, request))
+
+    monkeypatch.setattr(
+        "custom_components.reptilecare.config_flow.async_apply_onboarding", _apply
+    )
+
+    result = await flow.async_step_add_reptile(
+        {
+            "display_name": "Pixel",
+            "nickname": "Pix",
+            "morph": "Orange blotch",
+            "sex": "unknown",
+            "notes": "First reptile",
+        }
+    )
+    assert result["step_id"] == "species"
+
+    result = await flow.async_step_add_reptile_species(
+        {"species_id": "builtin:gargoyle_gecko"}
+    )
+    assert result["step_id"] == "recommended_care"
+
+    result = await flow.async_step_add_reptile_care(
+        {"selected_care_plan_ids": ["builtin:spot_clean_daily"]}
+    )
+    assert result["step_id"] == "initial_tasks"
+
+    result = await flow.async_step_add_reptile_tasks({"generate_initial_tasks": True})
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert len(calls) == 2
+    assert calls[0] is flow._runtime
+    assert calls[1].display_name == "Pixel"
+    assert calls[1].selected_care_plan_ids == ("builtin:spot_clean_daily",)
+    assert calls[1].generate_initial_tasks is True
+
+
+@pytest.mark.asyncio
+async def test_options_flow_import_demo_and_general_settings_paths(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Options flow should support demo import confirmation and general settings."""
+    flow = _fake_options_flow()
+    imported: list[object] = []
+
+    async def _import_demo(runtime: object) -> None:
+        imported.append(runtime)
+
+    monkeypatch.setattr(
+        "custom_components.reptilecare.config_flow.async_import_demo_data",
+        _import_demo,
+    )
+
+    result = await flow.async_step_import_demo_data({"confirm_import": False})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert imported == []
+
+    result = await flow.async_step_import_demo_data({"confirm_import": True})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert imported == [flow._runtime]
+
+    result = await flow.async_step_install_builtin_content(user_input={})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+
+    result = await flow.async_step_general_settings({"generate_tasks_on_startup": True})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"] == {"generate_tasks_on_startup": True}
+
+
+def test_async_get_options_flow_returns_options_flow_instance() -> None:
+    """Config flow should expose the dedicated options flow implementation."""
+    flow = ReptileCareConfigFlow.async_get_options_flow(
+        SimpleNamespace(
+            runtime_data=SimpleNamespace(content=load_builtin_content().bundle)
+        )
+    )
+    assert isinstance(flow, ReptileCareOptionsFlow)

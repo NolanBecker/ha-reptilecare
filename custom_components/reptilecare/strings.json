@@ -28,14 +28,14 @@
         "description": "Finish setup and let ReptileCare create your first reptile, install the selected care plans, and prepare your dashboard.",
         "title": "Finish Setup"
       }
-    },
-    "selector": {
-      "reptile_sex": {
-        "options": {
-          "female": "Female",
-          "male": "Male",
-          "unknown": "Unknown"
-        }
+    }
+  },
+  "selector": {
+    "reptile_sex": {
+      "options": {
+        "female": "Female",
+        "male": "Male",
+        "unknown": "Unknown"
       }
     }
   },
