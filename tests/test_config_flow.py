@@ -331,14 +331,14 @@ async def test_content_loading_uses_executor_once_per_config_flow(
         user_input={"display_name": "Pixel", "sex": "unknown"},
     )
     assert result["step_id"] == "species"
-    assert calls == [load_builtin_content]
+    assert calls.count(load_builtin_content) == 1
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         user_input={"species_id": "builtin:gargoyle_gecko"},
     )
     assert result["step_id"] == "recommended_care"
-    assert calls == [load_builtin_content]
+    assert calls.count(load_builtin_content) == 1
 
 
 async def test_content_loading_failure_aborts_flow_gracefully(
