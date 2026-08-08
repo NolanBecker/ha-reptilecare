@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0](https://github.com/NolanBecker/ha-reptilecare/compare/v0.4.0...v0.5.0) (2026-08-08)
+
+
+### Features
+
+* **onboarding:** add first-run setup and content system ([a43a888](https://github.com/NolanBecker/ha-reptilecare/commit/a43a8886fc18234e4385073f3ebe6a18c706c564))
+
+
+### Bug Fixes
+
+* **onboarding:** resolve CI translation and coverage issues ([451d334](https://github.com/NolanBecker/ha-reptilecare/commit/451d33456ef5abb167d221a1ab79a2e22e1bec9b))
+
 ## [0.4.0](https://github.com/NolanBecker/ha-reptilecare/compare/v0.3.0...v0.4.0) (2026-08-06)
 
 
