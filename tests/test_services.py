@@ -479,8 +479,21 @@ async def test_log_event_and_query_services(
 
 async def test_get_tasks_filters_due_state_and_limit(
     hass: HomeAssistant,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Task queries support reptile resolution, due-state projection, and limits."""
+    now = datetime(2026, 8, 5, 12, tzinfo=UTC)
+
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return now if tz is not None else now.replace(tzinfo=None)
+
+    monkeypatch.setattr(
+        "custom_components.reptilecare.services.datetime",
+        FixedDateTime,
+    )
+
     await _setup_entry(hass)
     await _create_pixel(hass)
     plan = await _create_feeding_plan(hass, slug="pixel")
@@ -489,7 +502,7 @@ async def test_get_tasks_filters_due_state_and_limit(
         "generate_tasks",
         {
             "care_plan_id": plan["care_plan_id"],
-            "now": datetime(2026, 8, 5, 12, tzinfo=UTC),
+            "now": now,
             "horizon_duration": {"days": 5},
         },
     )
