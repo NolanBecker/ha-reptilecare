@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/NolanBecker/ha-reptilecare/compare/v0.5.0...v0.5.1) (2026-08-09)
+
+
+### Bug Fixes
+
+* **onboarding:** avoid blocking content I/O in Home Assistant ([8a9deec](https://github.com/NolanBecker/ha-reptilecare/commit/8a9deec679c1dd645d13b02b32520331f9aefeaf))
+
 ## [0.5.0](https://github.com/NolanBecker/ha-reptilecare/compare/v0.4.0...v0.5.0) (2026-08-08)
 
 
