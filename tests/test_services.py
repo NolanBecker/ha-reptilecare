@@ -502,7 +502,7 @@ async def test_get_tasks_filters_due_state_and_limit(
         "generate_tasks",
         {
             "care_plan_id": plan["care_plan_id"],
-            "now": now,
+            "now": now.isoformat(),
             "horizon_duration": {"days": 5},
         },
     )
