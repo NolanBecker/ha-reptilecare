@@ -55,6 +55,34 @@ async def test_setup_and_unload_entry(hass: HomeAssistant) -> None:
     assert entry.state is ConfigEntryState.NOT_LOADED
 
 
+async def test_setup_uses_executor_for_builtin_loaders(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Setup should route built-in loader file I/O through the executor."""
+    from custom_components.reptilecare import async_setup_entry
+    from custom_components.reptilecare.content.loader import load_builtin_content
+    from custom_components.reptilecare.domain.species import SpeciesProfileRegistry
+    from custom_components.reptilecare.domain.task_template import TaskTemplateRegistry
+    from custom_components.reptilecare.domain.workflow import WorkflowRegistry
+
+    calls: list[object] = []
+    original = hass.async_add_executor_job
+
+    async def _spy(func, *args):
+        calls.append(func)
+        return await original(func, *args)
+
+    monkeypatch.setattr(hass, "async_add_executor_job", _spy)
+
+    entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
+    assert await async_setup_entry(hass, entry)
+
+    assert load_builtin_content in calls
+    assert SpeciesProfileRegistry.load_builtin_profiles in calls
+    assert TaskTemplateRegistry.load_builtin_templates in calls
+    assert WorkflowRegistry.load_builtin_workflows in calls
+
+
 async def test_reload_rebuilds_species_registry(hass: HomeAssistant) -> None:
     """Reloading reconstructs and exposes the built-in profile registry."""
     entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
@@ -188,6 +216,26 @@ async def test_invalid_builtin_profile_fails_setup(
     )
     entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
     with pytest.raises(ConfigEntryError, match="built-in species profiles"):
+        await async_setup_entry(hass, entry)
+
+
+async def test_invalid_builtin_content_fails_setup(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Fatal built-in content errors should fail setup cleanly."""
+    from custom_components.reptilecare import async_setup_entry
+    from custom_components.reptilecare.content.models import InvalidContentError
+
+    def _raise_invalid_content() -> None:
+        raise InvalidContentError("invalid packaged content")
+
+    monkeypatch.setattr(
+        "custom_components.reptilecare.content.async_loader.load_builtin_content",
+        _raise_invalid_content,
+    )
+
+    entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
+    with pytest.raises(ConfigEntryError, match="built-in ReptileCare content"):
         await async_setup_entry(hass, entry)
 
 

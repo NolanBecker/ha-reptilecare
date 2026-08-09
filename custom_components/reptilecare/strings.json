@@ -1,7 +1,8 @@
 {
   "config": {
     "abort": {
-      "already_configured": "ReptileCare is already configured."
+      "already_configured": "ReptileCare is already configured.",
+      "content_unavailable": "Built-in ReptileCare content could not be loaded."
     },
     "step": {
       "user": {

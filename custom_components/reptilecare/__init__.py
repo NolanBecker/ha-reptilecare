@@ -17,7 +17,8 @@ from homeassistant.exceptions import ConfigEntryError
 from .application import CareEngine, WorkflowEvaluator
 from .care_plan_storage import HomeAssistantCarePlanPersistence
 from .care_task_storage import HomeAssistantCareTaskPersistence
-from .content.loader import load_builtin_content
+from .content.async_loader import async_load_builtin_content
+from .content.models import ContentError
 from .coordinator import ReptileCareCoordinator
 from .domain.care_plan import CarePlanError, CarePlanRepository
 from .domain.care_task import CareTaskError, CareTaskRepository
@@ -49,7 +50,10 @@ PLATFORMS: tuple[Platform, ...] = (
 
 async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) -> bool:
     """Set up ReptileCare from a config entry."""
-    content_result = await hass.async_add_executor_job(load_builtin_content)
+    try:
+        content_result = await async_load_builtin_content(hass)
+    except (ContentError, OSError) as err:
+        raise ConfigEntryError("Unable to load built-in ReptileCare content") from err
     for warning in content_result.warnings:
         _LOGGER.warning("Built-in content warning: %s", warning)
     try:
