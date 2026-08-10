@@ -14,8 +14,10 @@ from .models import ReptileCareSnapshot
 from .storage import CareEventStore
 
 
-def async_notify_runtime_updated(hass: HomeAssistant) -> None:
+def async_notify_runtime_updated(hass: HomeAssistant | None) -> None:
     """Notify listeners that ReptileCare runtime state has changed."""
+    if hass is None:
+        return
     async_dispatcher_send(hass, SIGNAL_RUNTIME_UPDATED)
 
 

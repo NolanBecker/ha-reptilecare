@@ -376,7 +376,6 @@ class CareTaskGenerator:
                 str(care_plan.plan_version),
                 care_plan.task_template_id,
                 care_plan.workflow_id,
-                generation_reason.value,
                 occurrence_time.isoformat(),
             )
         )
