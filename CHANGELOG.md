@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.6.0](https://github.com/NolanBecker/ha-reptilecare/compare/v0.5.2...v0.6.0) (2026-08-10)
+
+
+### Features
+
+* **events:** add reactive update system ([f5540c9](https://github.com/NolanBecker/ha-reptilecare/commit/f5540c96d6883ce700f84c27f6bae9fedd570e35))
+* **frontend:** add Today's Care card ([c306859](https://github.com/NolanBecker/ha-reptilecare/commit/c306859a0690f2b12733525f1ee9d8e7add6a2a6))
+* **frontend:** add Today's Care card ([09b5fea](https://github.com/NolanBecker/ha-reptilecare/commit/09b5feab661e83326a3e55c76ace9305df438fbb))
+* **frontend:** polish Today's Care experience ([fbadfb4](https://github.com/NolanBecker/ha-reptilecare/commit/fbadfb4e957d43a3a07327690a635bfba05985b9))
+* **onboarding:** add first-run setup and content system ([a43a888](https://github.com/NolanBecker/ha-reptilecare/commit/a43a8886fc18234e4385073f3ebe6a18c706c564))
+
+
+### Bug Fixes
+
+* **onboarding:** avoid blocking content I/O in Home Assistant ([8a9deec](https://github.com/NolanBecker/ha-reptilecare/commit/8a9deec679c1dd645d13b02b32520331f9aefeaf))
+* **onboarding:** polish flows and task anchoring ([#49](https://github.com/NolanBecker/ha-reptilecare/issues/49)) ([3a72ff0](https://github.com/NolanBecker/ha-reptilecare/commit/3a72ff0eba50a4baec2957e3c44a5d1ad07f73b6))
+* **onboarding:** resolve CI translation and coverage issues ([451d334](https://github.com/NolanBecker/ha-reptilecare/commit/451d33456ef5abb167d221a1ab79a2e22e1bec9b))
+* **release:** require explicit Release Please token ([#37](https://github.com/NolanBecker/ha-reptilecare/issues/37)) ([e18bc9d](https://github.com/NolanBecker/ha-reptilecare/commit/e18bc9d6c1b2dd5aefb117da31b036efa9d33af7))
+* **release:** verify automated release detection ([77aab9b](https://github.com/NolanBecker/ha-reptilecare/commit/77aab9b6942dde3bcc38b8c6a07b5b891122899b))
+
 ## [0.5.2](https://github.com/NolanBecker/ha-reptilecare/compare/v0.5.1...v0.5.2) (2026-08-10)
 
 
