@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/NolanBecker/ha-reptilecare/compare/v0.5.1...v0.5.2) (2026-08-10)
+
+
+### Bug Fixes
+
+* **onboarding:** polish flows and task anchoring ([#49](https://github.com/NolanBecker/ha-reptilecare/issues/49)) ([3a72ff0](https://github.com/NolanBecker/ha-reptilecare/commit/3a72ff0eba50a4baec2957e3c44a5d1ad07f73b6))
+
 ## [0.5.1](https://github.com/NolanBecker/ha-reptilecare/compare/v0.5.0...v0.5.1) (2026-08-09)
 
 
