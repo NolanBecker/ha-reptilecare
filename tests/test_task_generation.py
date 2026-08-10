@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
+from types import MappingProxyType
 from zoneinfo import ZoneInfo
 
 from custom_components.reptilecare.application import CareTaskCreated
@@ -172,6 +173,19 @@ def test_schedule_supports_hourly_weekly_and_monthly() -> None:
     )
 
 
+def test_schedule_first_occurrence_prefers_tracking_anchor_over_midnight() -> None:
+    """Onboarding-created plans should start tracking from onboarding time."""
+    calculator = ScheduleCalculator()
+    plan = replace(
+        _plan(effective_date=date(2026, 8, 6)),
+        metadata=MappingProxyType(
+            {"reptilecare_tracking_started_at": "2026-08-06T12:00:00+00:00"}
+        ),
+    )
+
+    assert calculator.first_occurrence(plan) == datetime(2026, 8, 6, 12, tzinfo=UTC)
+
+
 def test_schedule_occurrences_respect_window_end_date_and_dst() -> None:
     """Occurrences remain bounded and honor local-time DST behavior."""
     calculator = ScheduleCalculator(ZoneInfo("America/Chicago"))
@@ -224,6 +238,40 @@ async def test_task_generation_creates_and_reconciles_idempotently() -> None:
     assert second.created_task_ids == ()
     assert len(second.existing_task_ids) == 2
     assert len(task_repository.all()) == 2
+
+
+async def test_task_generation_idempotent_across_reason_boundary() -> None:
+    """A later generation pass should not duplicate the same logical occurrence."""
+    reptile_repository = await _reptile_repository(_pixel())
+    care_plan_repository = await _care_plan_repository(
+        reptile_repository,
+        _plan(effective_date=date(2026, 8, 3), every=2),
+    )
+    task_repository = await _task_repository(reptile_repository, care_plan_repository)
+    generator = CareTaskGenerator(
+        reptile_repository,
+        care_plan_repository,
+        TaskTemplateRegistry.load_builtin_templates(),
+        WorkflowRegistry.load_builtin_workflows(),
+        task_repository,
+        ScheduleCalculator(),
+    )
+
+    first = await generator.async_generate(
+        now=datetime(2026, 8, 3, 0, 0, tzinfo=UTC),
+        look_ahead=timedelta(),
+        look_back=timedelta(),
+    )
+    second = await generator.async_generate(
+        now=datetime(2026, 8, 3, 0, 1, tzinfo=UTC),
+        look_ahead=timedelta(),
+        look_back=timedelta(days=1),
+    )
+
+    assert len(first.created_task_ids) == 1
+    assert second.created_task_ids == ()
+    assert len(second.existing_task_ids) == 1
+    assert len(task_repository.all()) == 1
 
 
 async def test_task_generation_skips_disabled_and_expired_plans() -> None:

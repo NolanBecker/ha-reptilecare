@@ -70,6 +70,9 @@ class ScheduleCalculator:
     def first_occurrence(self, care_plan: CarePlan) -> datetime:
         """Return the first scheduled occurrence for one CarePlan."""
         self._validate_schedule(care_plan.schedule)
+        anchored_start = self._tracking_started_at(care_plan)
+        if anchored_start is not None:
+            return anchored_start
         return self._local_date_to_utc(care_plan.effective_date)
 
     def next_occurrence(self, care_plan: CarePlan, occurrence: datetime) -> datetime:
@@ -137,6 +140,21 @@ class ScheduleCalculator:
     def _local_date_to_utc(self, value: date) -> datetime:
         local_start = datetime.combine(value, time.min, tzinfo=self._schedule_timezone)
         return local_start.astimezone(UTC)
+
+    def _tracking_started_at(self, care_plan: CarePlan) -> datetime | None:
+        """Return a reptile-specific tracking anchor when one is stored."""
+        raw_value = care_plan.metadata.get("reptilecare_tracking_started_at")
+        if not isinstance(raw_value, str):
+            return None
+        try:
+            parsed = datetime.fromisoformat(raw_value)
+        except ValueError:
+            return None
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            return None
+        anchored = parsed.astimezone(UTC)
+        local_floor = self._local_date_to_utc(care_plan.effective_date)
+        return anchored if anchored >= local_floor else local_floor
 
     @staticmethod
     def _validate_schedule(schedule: IntervalSchedule) -> None:
@@ -358,7 +376,6 @@ class CareTaskGenerator:
                 str(care_plan.plan_version),
                 care_plan.task_template_id,
                 care_plan.workflow_id,
-                generation_reason.value,
                 occurrence_time.isoformat(),
             )
         )

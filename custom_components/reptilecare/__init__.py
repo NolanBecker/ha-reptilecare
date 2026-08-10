@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 import logging
 
 from homeassistant.config_entries import (
@@ -164,7 +164,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ReptileCareConfigEntry) 
     generation_result = None
     if entry.options.get("generate_tasks_on_startup", True):
         generation_result = await care_task_generator.async_generate(
-            now=datetime.now(UTC)
+            now=datetime.now(UTC),
+            look_ahead=timedelta(),
         )
     if generation_result is not None and generation_result.errors:
         for care_plan_id, message in generation_result.errors.items():

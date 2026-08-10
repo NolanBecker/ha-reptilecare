@@ -1,6 +1,6 @@
 """Tests for ReptileCare setup and lifecycle."""
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
@@ -196,6 +196,61 @@ async def test_setup_runs_reconciliation_before_task_generation(
     assert steps == ["reconcile", "generate"]
     assert len(calls) == 1
     assert calls[0].tzinfo is not None
+
+
+async def test_setup_generates_only_current_window_on_startup(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Startup generation should not preload the future default horizon."""
+    from custom_components.reptilecare import CareTaskGenerator
+
+    arguments: list[dict[str, object]] = []
+
+    async def _generate(
+        self: CareTaskGenerator,
+        *,
+        now: datetime,
+        **kwargs: object,
+    ) -> TaskGenerationResult:
+        arguments.append({"now": now, **kwargs})
+        return TaskGenerationResult()
+
+    monkeypatch.setattr(CareTaskGenerator, "async_generate", _generate)
+
+    entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert len(arguments) == 1
+    assert arguments[0]["look_ahead"] == timedelta()
+
+
+async def test_setup_applies_onboarding_without_weeklong_backlog(
+    hass: HomeAssistant,
+) -> None:
+    """Pending onboarding data should only create tasks that should exist now."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title=INTEGRATION_NAME,
+        data={
+            "onboarding": {
+                "display_name": "Pixel",
+                "species_id": "builtin:gargoyle_gecko",
+                "selected_care_plan_ids": ["builtin:feed_fruit_every_2_days"],
+                "generate_initial_tasks": True,
+            }
+        },
+    )
+    entry.add_to_hass(hass)
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    tasks = entry.runtime_data.care_task_repository.all()
+    assert len(tasks) == 1
+    assert tasks[0].status.value == "pending"
+    assert tasks[0].due_at <= datetime.now(UTC)
 
 
 async def test_invalid_builtin_profile_fails_setup(

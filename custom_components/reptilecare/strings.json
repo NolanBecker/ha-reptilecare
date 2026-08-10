@@ -10,20 +10,45 @@
         "title": "Welcome to ReptileCare"
       },
       "reptile": {
-        "description": "Create your first reptile. Additional reptiles can be added later from the integration options.",
+        "description": "Create your first reptile. Additional reptiles can be added later from the ReptileCare Hub.",
+        "data": {
+          "display_name": "Name",
+          "nickname": "Nickname",
+          "morph": "Morph",
+          "sex": "Sex",
+          "hatch_date": "Hatch Date",
+          "notes": "Notes"
+        },
+        "data_description": {
+          "display_name": "The name you'll use for this reptile in Home Assistant and ReptileCare.",
+          "nickname": "An optional casual nickname for personal notes.",
+          "morph": "Optional color or morph notes.",
+          "sex": "Choose the reptile's sex if known.",
+          "hatch_date": "Optional hatch date for age-aware records.",
+          "notes": "Anything helpful to remember during setup."
+        },
         "title": "Create Reptile"
       },
       "species": {
         "description": "Choose a species from the built-in catalog.",
+        "data": {
+          "species_id": "Species"
+        },
         "title": "Choose Species"
       },
       "recommended_care": {
-        "description": "Select the recommended care plans you want to install for this reptile.",
+        "description": "Choose the care routines you'd like ReptileCare to track for {reptile_name}. You can change these later from the ReptileCare Hub.",
+        "data": {
+          "selected_care_plan_ids": "Care Plans"
+        },
         "title": "Recommended Care"
       },
       "initial_tasks": {
-        "description": "Generate today's care now, or wait until later.",
-        "title": "Generate Initial Tasks"
+        "description": "Choose whether ReptileCare should create the care tasks that should exist right now for {reptile_name}. Future tasks will continue to appear as care schedules are evaluated later.",
+        "data": {
+          "generate_initial_tasks": "Create initial care tasks"
+        },
+        "title": "Initial Care Tasks"
       },
       "finish": {
         "description": "Finish setup and let ReptileCare create your first reptile, install the selected care plans, and prepare your dashboard.",
@@ -44,40 +69,106 @@
     "step": {
       "init": {
         "title": "ReptileCare Hub",
-        "description": "Manage reptiles, built-in content, demo data, and general settings.",
+        "description": "Manage reptiles, care plans, the built-in species library, demo data, and general settings.",
         "menu_options": {
           "add_reptile": "Add Reptile",
+          "manage_care_plans": "Care Plans",
           "install_builtin_content": "Species Library",
           "import_demo_data": "Import Demo Data",
           "general_settings": "General Settings"
         }
       },
-      "reptile": {
-        "description": "Create another reptile without using internal identifiers.",
+      "add_reptile": {
+        "description": "Add another reptile without touching existing reptiles or their care history.",
+        "data": {
+          "display_name": "Name",
+          "nickname": "Nickname",
+          "morph": "Morph",
+          "sex": "Sex",
+          "hatch_date": "Hatch Date",
+          "notes": "Notes"
+        },
+        "data_description": {
+          "display_name": "The name you'll use for this reptile in Home Assistant and ReptileCare.",
+          "nickname": "An optional casual nickname for personal notes.",
+          "morph": "Optional color or morph notes.",
+          "sex": "Choose the reptile's sex if known.",
+          "hatch_date": "Optional hatch date for age-aware records.",
+          "notes": "Anything helpful to remember for this reptile."
+        },
         "title": "Add Reptile"
       },
-      "species": {
+      "add_reptile_species": {
         "description": "Choose a species from the built-in catalog.",
+        "data": {
+          "species_id": "Species"
+        },
         "title": "Choose Species"
       },
-      "recommended_care": {
-        "description": "Select the recommended care plans to install for this reptile.",
+      "add_reptile_care": {
+        "description": "Choose the care routines you'd like ReptileCare to track for {reptile_name}. You can change these later from the ReptileCare Hub.",
+        "data": {
+          "selected_care_plan_ids": "Care Plans"
+        },
         "title": "Recommended Care"
       },
-      "initial_tasks": {
-        "description": "Generate today's care for the new reptile now, or wait until later.",
-        "title": "Generate Initial Tasks"
+      "add_reptile_tasks": {
+        "description": "Choose whether ReptileCare should create the care tasks that should exist right now for {reptile_name}. Future tasks will continue to appear as care schedules are evaluated later.",
+        "data": {
+          "generate_initial_tasks": "Create initial care tasks"
+        },
+        "title": "Initial Care Tasks"
       },
       "install_builtin_content": {
-        "description": "The built-in species library is installed automatically and stays available for onboarding and future reptiles.",
-        "title": "Built-in Content"
+        "description": "Browse the built-in species library already installed with ReptileCare.",
+        "data": {
+          "species_id": "Species"
+        },
+        "title": "Species Library"
+      },
+      "species_library_detail": {
+        "description": "{species_name}\nScientific name: {scientific_name}\nCategory: {category}\nAliases: {aliases}\n\n{description}\n\nEnvironmental targets:\n{environmental_targets}\n\nRecommended care plans:\n{recommended_care_plans}",
+        "menu_options": {
+          "species_library_back": "Back to Species Library"
+        },
+        "title": "Species Details"
+      },
+      "manage_care_plans": {
+        "description": "Choose the reptile whose assigned care plans you want to review.",
+        "data": {
+          "reptile_id": "Reptile"
+        },
+        "title": "Care Plans"
+      },
+      "manage_care_plans_empty": {
+        "description": "Add a reptile first, then return here to manage its care plans.",
+        "menu_options": {
+          "add_reptile": "Add Reptile"
+        },
+        "title": "Care Plans"
+      },
+      "manage_care_plans_selection": {
+        "description": "Choose which care routines ReptileCare should track for {reptile_name}.\n\nCurrently assigned:\n{current_care_plans}",
+        "data": {
+          "selected_care_plan_ids": "Care Plans"
+        },
+        "title": "Manage Care Plans"
       },
       "import_demo_data": {
         "description": "Install optional sample data, including Pixel, example care plans, sample history, and pending tasks.",
+        "data": {
+          "confirm_import": "Install demo data"
+        },
         "title": "Import Demo Data"
       },
       "general_settings": {
         "description": "Adjust general ReptileCare runtime behavior.",
+        "data": {
+          "generate_tasks_on_startup": "Generate care tasks when Home Assistant starts"
+        },
+        "data_description": {
+          "generate_tasks_on_startup": "When enabled, ReptileCare checks each reptile's care schedules during startup and creates any care tasks that should exist right now."
+        },
         "title": "General Settings"
       }
     }

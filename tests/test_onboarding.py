@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 import pytest
@@ -29,6 +29,7 @@ from custom_components.reptilecare.onboarding import (
     OnboardingRequest,
     async_apply_onboarding,
     async_import_demo_data,
+    build_builtin_care_plan,
     deserialize_request,
     recommended_care_plan_choices,
     serialize_request,
@@ -284,3 +285,85 @@ async def test_apply_onboarding_without_generation_deduplicates_slug() -> None:
     assert second.reptile.notes is None
     assert len(second.care_plans) == 1
     assert second.care_plans[0].display_name == "Spot Cleaning"
+
+
+@pytest.mark.asyncio
+async def test_apply_onboarding_generates_only_currently_due_initial_tasks() -> None:
+    """Initial onboarding generation should not preload a future backlog."""
+    content = load_builtin_content().bundle
+    species_profiles = SpeciesProfileRegistry.load_builtin_profiles()
+    task_templates = TaskTemplateRegistry.load_builtin_templates()
+    workflows = WorkflowRegistry.load_builtin_workflows()
+    reptile_repository = ReptileRepository(species_profiles, MemoryReptilePersistence())
+    care_plan_repository = CarePlanRepository(
+        reptile_repository,
+        task_templates,
+        workflows,
+        MemoryCarePlanPersistence(),
+    )
+    task_repository = CareTaskRepository(
+        reptile_repository,
+        care_plan_repository,
+        task_templates,
+        workflows,
+        MemoryCareTaskPersistence(),
+    )
+    await reptile_repository.async_load()
+    await care_plan_repository.async_load()
+    await task_repository.async_load()
+    event_store = MemoryCareEventStore()
+    publisher = _FakePublisher([])
+    runtime = _Runtime(
+        content=content,
+        reptile_repository=reptile_repository,
+        care_plan_repository=care_plan_repository,
+        care_task_generator=CareTaskGenerator(
+            reptile_repository,
+            care_plan_repository,
+            task_templates,
+            workflows,
+            task_repository,
+            ScheduleCalculator(),
+            event_publisher=publisher,
+        ),
+        event_publisher=publisher,
+        event_store=event_store,
+    )
+
+    result = await async_apply_onboarding(
+        runtime,  # type: ignore[arg-type]
+        OnboardingRequest(
+            display_name="Pixel",
+            species_id="builtin:gargoyle_gecko",
+            selected_care_plan_ids=("builtin:feed_fruit_every_2_days",),
+            generate_initial_tasks=True,
+        ),
+        now=datetime(2026, 8, 6, 12, 0, tzinfo=UTC),
+    )
+
+    tasks = tuple(task_repository.all())
+    assert len(result.generated_task_ids) == 1
+    assert len(tasks) == 1
+    assert tasks[0].due_at == datetime(2026, 8, 6, 12, 0, tzinfo=UTC)
+
+
+def test_build_builtin_care_plan_records_tracking_anchor_metadata() -> None:
+    """Built-in onboarding plans should persist a stable tracking start timestamp."""
+    content = load_builtin_content().bundle
+    template = content.care_plans.get("builtin:feed_fruit_every_2_days")
+
+    care_plan = build_builtin_care_plan(
+        reptile_id="550e8400-e29b-41d4-a716-446655440000",
+        template=template,
+        effective_date=date(2026, 8, 6),
+        tracking_started_at=datetime(2026, 8, 6, 12, 0, tzinfo=UTC),
+    )
+
+    assert (
+        care_plan.metadata["reptilecare_builtin_content_id"]
+        == "builtin:feed_fruit_every_2_days"
+    )
+    assert (
+        care_plan.metadata["reptilecare_tracking_started_at"]
+        == "2026-08-06T12:00:00+00:00"
+    )
