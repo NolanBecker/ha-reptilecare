@@ -1,6 +1,6 @@
 """Tests for the ReptileCare config flow."""
 
-from datetime import date
+from datetime import UTC, date, datetime
 from types import SimpleNamespace
 
 from homeassistant import config_entries
@@ -19,6 +19,11 @@ from custom_components.reptilecare.config_flow import (
 )
 from custom_components.reptilecare.const import DOMAIN, INTEGRATION_NAME
 from custom_components.reptilecare.content.loader import load_builtin_content
+from custom_components.reptilecare.domain.care_task import CareTaskStatus
+from custom_components.reptilecare.onboarding import (
+    OnboardingRequest,
+    async_apply_onboarding,
+)
 
 
 async def test_user_flow_creates_entry(hass: HomeAssistant) -> None:
@@ -167,6 +172,15 @@ def _fake_options_flow() -> ReptileCareOptionsFlow:
     return ReptileCareOptionsFlow(config_entry)
 
 
+async def _setup_entry(hass: HomeAssistant) -> MockConfigEntry:
+    entry = MockConfigEntry(domain=DOMAIN, title=INTEGRATION_NAME, data={})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.state is ConfigEntryState.LOADED
+    return entry
+
+
 @pytest.mark.asyncio
 async def test_options_flow_menu_and_forms_render() -> None:
     """Options flow should expose each management step as a form or menu."""
@@ -182,14 +196,15 @@ async def test_options_flow_menu_and_forms_render() -> None:
     assert menu["type"] is FlowResultType.MENU
     assert menu["menu_options"] == [
         "add_reptile",
+        "manage_care_plans",
         "install_builtin_content",
         "import_demo_data",
         "general_settings",
     ]
     assert add_reptile["type"] is FlowResultType.FORM
-    assert add_reptile["step_id"] == "reptile"
+    assert add_reptile["step_id"] == "add_reptile"
     assert species["type"] is FlowResultType.FORM
-    assert species["step_id"] == "species"
+    assert species["step_id"] == "add_reptile_species"
     assert install_content["type"] is FlowResultType.FORM
     assert install_content["step_id"] == "install_builtin_content"
     assert import_demo["type"] is FlowResultType.FORM
@@ -199,10 +214,10 @@ async def test_options_flow_menu_and_forms_render() -> None:
 
 
 @pytest.mark.asyncio
-async def test_options_flow_add_reptile_executes_onboarding(
+async def test_options_flow_add_reptile_alias_route_executes_onboarding(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Add-reptile options flow should delegate persistence through onboarding."""
+    """Legacy route names should still reach the add-reptile onboarding path."""
     flow = _fake_options_flow()
     calls: list[object] = []
 
@@ -213,7 +228,7 @@ async def test_options_flow_add_reptile_executes_onboarding(
         "custom_components.reptilecare.config_flow.async_apply_onboarding", _apply
     )
 
-    result = await flow.async_step_add_reptile(
+    result = await flow.async_step_reptile(
         {
             "display_name": "Pixel",
             "nickname": "Pix",
@@ -222,19 +237,17 @@ async def test_options_flow_add_reptile_executes_onboarding(
             "notes": "First reptile",
         }
     )
-    assert result["step_id"] == "species"
+    assert result["step_id"] == "add_reptile_species"
 
-    result = await flow.async_step_add_reptile_species(
-        {"species_id": "builtin:gargoyle_gecko"}
-    )
-    assert result["step_id"] == "recommended_care"
+    result = await flow.async_step_species({"species_id": "builtin:gargoyle_gecko"})
+    assert result["step_id"] == "add_reptile_care"
 
-    result = await flow.async_step_add_reptile_care(
+    result = await flow.async_step_recommended_care(
         {"selected_care_plan_ids": ["builtin:spot_clean_daily"]}
     )
-    assert result["step_id"] == "initial_tasks"
+    assert result["step_id"] == "add_reptile_tasks"
 
-    result = await flow.async_step_add_reptile_tasks({"generate_initial_tasks": True})
+    result = await flow.async_step_initial_tasks({"generate_initial_tasks": True})
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert len(calls) == 2
@@ -242,6 +255,151 @@ async def test_options_flow_add_reptile_executes_onboarding(
     assert calls[1].display_name == "Pixel"
     assert calls[1].selected_care_plan_ids == ("builtin:spot_clean_daily",)
     assert calls[1].generate_initial_tasks is True
+
+
+@pytest.mark.asyncio
+async def test_options_flow_add_reptile_creates_second_reptile(
+    hass: HomeAssistant,
+) -> None:
+    """Add Reptile should create a second reptile without affecting the first."""
+    entry = await _setup_entry(hass)
+    runtime = entry.runtime_data
+    await async_apply_onboarding(
+        runtime,
+        OnboardingRequest(
+            display_name="Pixel",
+            species_id="builtin:gargoyle_gecko",
+            selected_care_plan_ids=("builtin:spot_clean_daily",),
+            generate_initial_tasks=True,
+        ),
+        now=datetime(2026, 8, 8, 14, tzinfo=UTC),
+    )
+
+    flow = ReptileCareOptionsFlow(entry)
+    result = await flow.async_step_add_reptile(
+        {
+            "display_name": "Beans",
+            "nickname": "Beanie",
+            "sex": "unknown",
+            "notes": "Second reptile",
+        }
+    )
+    assert result["step_id"] == "add_reptile_species"
+
+    result = await flow.async_step_add_reptile_species(
+        {"species_id": "builtin:crested_gecko"}
+    )
+    assert result["step_id"] == "add_reptile_care"
+
+    result = await flow.async_step_add_reptile_care(
+        {
+            "selected_care_plan_ids": [
+                "builtin:spot_clean_daily",
+                "builtin:change_water_daily",
+            ]
+        }
+    )
+    assert result["step_id"] == "add_reptile_tasks"
+
+    result = await flow.async_step_add_reptile_tasks({"generate_initial_tasks": True})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+
+    reptiles = runtime.reptile_repository.all()
+    assert len(reptiles) == 2
+    assert {reptile.display_name for reptile in reptiles} == {"Pixel", "Beans"}
+    beans = next(reptile for reptile in reptiles if reptile.display_name == "Beans")
+    assert runtime.care_plan_repository.for_reptile(beans.reptile_id)
+    assert runtime.care_task_repository.for_reptile(beans.reptile_id)
+
+
+@pytest.mark.asyncio
+async def test_species_library_navigation_uses_real_library_steps() -> None:
+    """Species Library should navigate to a real detail step instead of a blank form."""
+    flow = _fake_options_flow()
+
+    result = await flow.async_step_install_builtin_content(
+        {"species_id": "builtin:gargoyle_gecko"}
+    )
+    assert result["type"] is FlowResultType.MENU
+    assert result["step_id"] == "species_library_detail"
+    assert result["menu_options"] == ["species_library_back"]
+
+    result = await flow.async_step_species_library_back()
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "install_builtin_content"
+
+
+@pytest.mark.asyncio
+async def test_options_flow_manage_care_plans_updates_assignments(
+    hass: HomeAssistant,
+) -> None:
+    """Care-plan management should enable, disable, and generate tasks coherently."""
+    entry = await _setup_entry(hass)
+    runtime = entry.runtime_data
+    await async_apply_onboarding(
+        runtime,
+        OnboardingRequest(
+            display_name="Pixel",
+            species_id="builtin:gargoyle_gecko",
+            selected_care_plan_ids=("builtin:spot_clean_daily",),
+            generate_initial_tasks=True,
+        ),
+        now=datetime(2026, 8, 8, 14, tzinfo=UTC),
+    )
+
+    reptile = runtime.reptile_repository.all()[0]
+    flow = ReptileCareOptionsFlow(entry)
+
+    result = await flow.async_step_manage_care_plans()
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "manage_care_plans_selection"
+
+    result = await flow.async_step_manage_care_plans_selection(
+        {
+            "selected_care_plan_ids": [
+                "builtin:spot_clean_daily",
+                "builtin:change_water_daily",
+            ]
+        }
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+
+    enabled_plans = runtime.care_plan_repository.for_reptile(
+        reptile.reptile_id, include_disabled=False
+    )
+    assert {plan.display_name for plan in enabled_plans} == {
+        "Spot Cleaning",
+        "Change Water",
+    }
+    change_water_plan = next(
+        plan for plan in enabled_plans if plan.display_name == "Change Water"
+    )
+    assert runtime.care_task_repository.for_care_plan(change_water_plan.care_plan_id)
+
+    result = await flow.async_step_manage_care_plans_selection(
+        {"selected_care_plan_ids": ["builtin:change_water_daily"]}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+
+    enabled_plans = runtime.care_plan_repository.for_reptile(
+        reptile.reptile_id, include_disabled=False
+    )
+    assert {plan.display_name for plan in enabled_plans} == {"Change Water"}
+
+    disabled_spot_clean = next(
+        plan
+        for plan in runtime.care_plan_repository.for_reptile(
+            reptile.reptile_id, include_disabled=True
+        )
+        if plan.display_name == "Spot Cleaning"
+    )
+    assert disabled_spot_clean.enabled is False
+    assert all(
+        task.status is not CareTaskStatus.PENDING
+        for task in runtime.care_task_repository.for_care_plan(
+            disabled_spot_clean.care_plan_id
+        )
+    )
 
 
 @pytest.mark.asyncio
@@ -268,8 +426,11 @@ async def test_options_flow_import_demo_and_general_settings_paths(
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert imported == [flow._runtime]
 
-    result = await flow.async_step_install_builtin_content(user_input={})
-    assert result["type"] is FlowResultType.CREATE_ENTRY
+    result = await flow.async_step_install_builtin_content(
+        {"species_id": "builtin:gargoyle_gecko"}
+    )
+    assert result["type"] is FlowResultType.MENU
+    assert result["step_id"] == "species_library_detail"
 
     result = await flow.async_step_general_settings({"generate_tasks_on_startup": True})
     assert result["type"] is FlowResultType.CREATE_ENTRY
@@ -387,4 +548,4 @@ async def test_options_flow_reuses_runtime_content_without_loading(
 
     result = await flow.async_step_add_reptile_species()
     assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "species"
+    assert result["step_id"] == "add_reptile_species"

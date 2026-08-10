@@ -14,6 +14,8 @@ import {
   validateTodaysCareConfig,
 } from "../../custom_components/reptilecare/frontend/models/todays-care-model.js";
 
+const NOW = new Date("2026-08-06T12:00:00-05:00");
+
 function task(overrides = {}) {
   return normalizeTask({
     task_id: overrides.task_id ?? "task-1",
@@ -33,7 +35,7 @@ function task(overrides = {}) {
       context_fields: [],
     },
     ui: overrides.ui,
-  });
+  }, NOW);
 }
 
 describe("validateTodaysCareConfig", () => {
@@ -91,7 +93,7 @@ describe("normalizeTask", () => {
       care_plan_id: "plan-1",
       completion_schema: { outcomes: [], context_fields: [] },
       due_at: "2026-08-07T10:00:00-05:00",
-    });
+    }, NOW);
 
     expect(normalized.presentation.title).toBe("builtin:feed_fruit");
     expect(normalized.presentation.icon).toBe("mdi:clipboard-text-clock-outline");
@@ -143,7 +145,7 @@ describe("sorting and grouping", () => {
         due_at: "2026-08-06T18:00:00-05:00",
         title: "Today",
       }),
-    ]);
+    ], NOW);
 
     expect(tasks.map((item) => item.task_id)).toEqual([
       "overdue",
@@ -159,7 +161,7 @@ describe("sorting and grouping", () => {
       task({ task_id: "due", due_at: "2026-08-06T11:00:00-05:00", due_state: "due" }),
       task({ task_id: "today", due_at: "2026-08-06T18:00:00-05:00" }),
       task({ task_id: "future", due_at: "2026-08-07T09:00:00-05:00" }),
-    ]);
+    ], NOW);
 
     expect(sections.map((section) => section.key)).toEqual([
       "overdue",
@@ -172,7 +174,7 @@ describe("sorting and grouping", () => {
 
 describe("summary and header", () => {
   it("returns a friendly clear state when no tasks exist", () => {
-    expect(summarizeTaskList([], { slug: "pixel", reptile_id: null }, [])).toEqual({
+    expect(summarizeTaskList([], { slug: "pixel", reptile_id: null }, [], NOW)).toEqual({
       tone: "clear",
       heading: "✨ Pixel is all caught up!",
       body: "No care is currently due.",
@@ -183,7 +185,7 @@ describe("summary and header", () => {
   it("returns a warning state when overdue tasks exist", () => {
     const tasks = [task({ task_id: "task-1", due_at: "2026-08-05T09:00:00-05:00", due_state: "overdue" })];
 
-    expect(summarizeTaskList(tasks, { slug: "pixel", reptile_id: null }, [])).toEqual({
+    expect(summarizeTaskList(tasks, { slug: "pixel", reptile_id: null }, [], NOW)).toEqual({
       tone: "overdue",
       heading: "⚠️ Pixel needs attention",
       body: "1 care task is overdue.",
@@ -199,6 +201,7 @@ describe("summary and header", () => {
       ],
       { slug: "pixel", reptile_id: null },
       [{ attributes: { friendly_name: "Pixel Pending Care Tasks", species: "Gargoyle Gecko" } }],
+      NOW,
     );
 
     expect(header.reptileLabel).toBe("Pixel");
@@ -214,6 +217,7 @@ describe("local task state", () => {
       [task({ task_id: "a" }), task({ task_id: "b", due_at: "2026-08-05T09:00:00-05:00", due_state: "overdue" })],
       "a",
       { busy: true, error: "oops" },
+      NOW,
     );
 
     expect(tasks.find((item) => item.task_id === "a").ui.busy).toBe(true);
@@ -236,6 +240,7 @@ describe("local task state", () => {
         ],
         existing_follow_up_tasks: [],
       },
+      NOW,
     );
 
     expect(tasks.map((item) => item.task_id)).toEqual(["task-2"]);

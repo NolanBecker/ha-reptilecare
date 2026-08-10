@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
+from types import MappingProxyType
 from zoneinfo import ZoneInfo
 
 from custom_components.reptilecare.application import CareTaskCreated
@@ -170,6 +171,19 @@ def test_schedule_supports_hourly_weekly_and_monthly() -> None:
     assert calculator.next_occurrence(monthly, first_monthly) == datetime(
         2026, 2, 28, 0, tzinfo=UTC
     )
+
+
+def test_schedule_first_occurrence_prefers_tracking_anchor_over_midnight() -> None:
+    """Onboarding-created plans should start tracking from onboarding time."""
+    calculator = ScheduleCalculator()
+    plan = replace(
+        _plan(effective_date=date(2026, 8, 6)),
+        metadata=MappingProxyType(
+            {"reptilecare_tracking_started_at": "2026-08-06T12:00:00+00:00"}
+        ),
+    )
+
+    assert calculator.first_occurrence(plan) == datetime(2026, 8, 6, 12, tzinfo=UTC)
 
 
 def test_schedule_occurrences_respect_window_end_date_and_dst() -> None:

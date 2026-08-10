@@ -11,12 +11,15 @@ from uuid import uuid4
 
 from .application import CareEventRecorded, CarePlanUpdated, ReptileUpdated
 from .content.loader import BuiltinContentBundle
+from .content.models import BuiltinCarePlanTemplate
 from .domain.care_plan import CarePlan, IntervalSchedule
 from .domain.reptile import Reptile, ReptileOverrides, ReptileSex
 from .domain.task_template import TaskPriority
 from .models import CareEvent, CareEventType, ReptileCareRuntimeData
 
 _NON_SLUG = re.compile(r"[^a-z0-9]+")
+_METADATA_BUILTIN_CONTENT_ID = "reptilecare_builtin_content_id"
+_METADATA_TRACKING_STARTED_AT = "reptilecare_tracking_started_at"
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,6 +92,7 @@ async def async_apply_onboarding(
     now: datetime | None = None,
 ) -> OnboardingResult:
     """Install a reptile and selected built-in care plans."""
+    applied_at = now or datetime.now(UTC)
     species = runtime.content.species.get(request.species_id)
     reptile = Reptile(
         reptile_id=str(uuid4()),
@@ -106,16 +110,11 @@ async def async_apply_onboarding(
     care_plans: list[CarePlan] = []
     for plan_id in request.selected_care_plan_ids:
         template = runtime.content.care_plans.get(plan_id)
-        care_plan = CarePlan(
+        care_plan = build_builtin_care_plan(
             reptile_id=reptile.reptile_id,
-            task_template_id=template.task_template_id,
-            workflow_id=template.workflow_id,
-            display_name=template.display_name,
-            enabled=True,
-            priority=TaskPriority(template.priority),
-            schedule=IntervalSchedule(every=template.every, unit=template.unit),
-            effective_date=(now or datetime.now(UTC)).date(),
-            metadata=template.metadata,
+            template=template,
+            effective_date=applied_at.date(),
+            tracking_started_at=applied_at,
         )
         await runtime.care_plan_repository.async_add(care_plan)
         care_plans.append(care_plan)
@@ -141,7 +140,9 @@ async def async_apply_onboarding(
         return OnboardingResult(reptile=reptile, care_plans=tuple(care_plans))
 
     generation = await runtime.care_task_generator.async_generate(
-        now=now or datetime.now(UTC),
+        now=applied_at,
+        look_ahead=timedelta(),
+        look_back=timedelta(),
         reptile_id=reptile.reptile_id,
     )
     return OnboardingResult(
@@ -209,6 +210,53 @@ def species_choices(content: BuiltinContentBundle) -> tuple[tuple[str, str], ...
     return tuple(
         (item.species_id, item.display_name)
         for item in sorted(content.species.all(), key=lambda item: item.display_name)
+    )
+
+
+def build_builtin_care_plan(
+    *,
+    reptile_id: str,
+    template: BuiltinCarePlanTemplate,
+    effective_date: date,
+    tracking_started_at: datetime,
+    care_plan_id: str | None = None,
+    enabled: bool = True,
+    plan_version: int = 1,
+) -> CarePlan:
+    """Build a reptile-owned CarePlan from one built-in template."""
+    metadata = dict(template.metadata)
+    metadata[_METADATA_BUILTIN_CONTENT_ID] = template.content_id
+    metadata[_METADATA_TRACKING_STARTED_AT] = tracking_started_at.astimezone(
+        UTC
+    ).isoformat()
+    return CarePlan(
+        reptile_id=reptile_id,
+        task_template_id=template.task_template_id,
+        workflow_id=template.workflow_id,
+        display_name=template.display_name,
+        schedule=IntervalSchedule(every=template.every, unit=template.unit),
+        effective_date=effective_date,
+        care_plan_id=care_plan_id or str(uuid4()),
+        enabled=enabled,
+        priority=TaskPriority(template.priority),
+        metadata=MappingProxyType(metadata),
+        plan_version=plan_version,
+    )
+
+
+def builtin_template_matches_care_plan(
+    care_plan: CarePlan,
+    template: BuiltinCarePlanTemplate,
+) -> bool:
+    """Return whether one persisted CarePlan maps to a built-in template."""
+    if care_plan.metadata.get(_METADATA_BUILTIN_CONTENT_ID) == template.content_id:
+        return True
+    return (
+        care_plan.task_template_id == template.task_template_id
+        and care_plan.workflow_id == template.workflow_id
+        and care_plan.display_name == template.display_name
+        and care_plan.schedule.every == template.every
+        and care_plan.schedule.unit == template.unit
     )
 
 
